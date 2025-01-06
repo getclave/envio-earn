@@ -9,8 +9,8 @@ export const VenusPoolsToFetchShare = new Set<Address>();
 
 class VenusShareFetcher {
   latestHandledBlock = 0;
-  syncInterval = 1800;
-  asyncInterval = 100000;
+  syncInterval = 86400;
+  asyncInterval = 1000000;
 
   public async genVenusPoolShares(
     context: handlerContext,

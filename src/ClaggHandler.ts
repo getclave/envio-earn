@@ -58,7 +58,7 @@ ClaggMain.Deposit.handlerWithLoader({
               totalSupply: 0n,
               underlyingToken_id: decodedPoolConfig.token.toLowerCase(),
             };
-            context.log.info("created pool " + pool.id + " with adapter " + adapter);
+            context.log.info("Creating new Clagg Pool " + pool.id + " with adapter " + adapter);
             context.ClaggPool.set(pool);
             ClaggPoolsToFetchShare.add(event.params.pool.toLowerCase() as Address);
             break;

@@ -23,7 +23,7 @@ class PriceFetcher {
   ODOS_BASE_URL = "https://api.odos.xyz/pricing/token";
   latestHandledBlock = 0;
   syncInterval = 300;
-  asyncInterval = 100000;
+  asyncInterval = 1000000;
 
   public async genOdosTokenPrices(
     context: handlerContext,
@@ -44,7 +44,7 @@ class PriceFetcher {
 
     const chainId = 324;
 
-    context.log.info("fetching prices for " + tokenList.flat());
+    context.log.info("Fetching ERC20 prices for " + tokenList.length + " tokens");
     // Map token addresses to query
     const chainSpecificTokenAddresses = tokenList.map((item) =>
       item.id == TOKEN_ADDRESS.ETHER ? zeroAddress : item.id
@@ -76,7 +76,6 @@ class PriceFetcher {
           price: lowercaseResponse[address],
         };
         context.Token.set(tokenObject);
-        context.log.info("set token " + tokenObject.name + " price " + tokenObject.price);
       }
     });
   }

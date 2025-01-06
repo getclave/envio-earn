@@ -11,8 +11,8 @@ export const ClaggAdaptersToAskPools = new Set<Address>();
 
 class ClaggShareFetcher {
   latestHandledBlock = 0;
-  syncInterval = 300;
-  asyncInterval = 100000;
+  syncInterval = 86400;
+  asyncInterval = 1000000;
 
   public async genClaggPoolShares(
     context: handlerContext,
@@ -30,7 +30,9 @@ class ClaggShareFetcher {
     this.latestHandledBlock = event.block.number;
 
     const poolList = Array.from(ClaggPoolsToFetchShare);
-    context.log.info("fetching clagg shares for " + poolList.flat());
+
+    context.log.info("Fetching Clagg shares for " + poolList.length + " pools");
+
     for (let address of poolList) {
       const pool = await context.ClaggPool.get(address);
       if (pool?.adapter_id == null) {

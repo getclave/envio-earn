@@ -9,8 +9,8 @@ export const SyncswapPoolsToFetchShare = new Set<Address>();
 
 class SyncswapShareFetcher {
   latestHandledBlock = 0;
-  syncInterval = 1800;
-  asyncInterval = 100000;
+  syncInterval = 86400;
+  asyncInterval = 1000000;
 
   public async genSyncswapPoolShares(
     context: handlerContext,
@@ -28,7 +28,7 @@ class SyncswapShareFetcher {
     this.latestHandledBlock = event.block.number;
 
     const poolList = Array.from(SyncswapPoolsToFetchShare);
-    context.log.info("fetching sync shares for " + poolList.flat());
+    context.log.info("Fetching Sync shares for " + poolList.length + " pools");
     for (let address of poolList) {
       const pool = await context.SyncswapPool.get(address);
       const contract = getContract({ address, abi: SyncswapPoolABI, client });
@@ -52,7 +52,6 @@ class SyncswapShareFetcher {
         pool?.poolType as bigint,
         token1Precision.result as bigint
       );
-      context.log.info("sync pool " + pool?.name + " price " + price);
       context.SyncswapPool.set({
         id: address,
         address,

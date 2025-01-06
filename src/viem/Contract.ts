@@ -53,7 +53,7 @@ export const getOrCreateToken = async (
     decimals: tokenData.decimals.result,
     price: 0,
   };
-  context.log.info("writing new token " + tokenObject.name + " " + tokenObject.id);
+
   context.Token.set(tokenObject);
 
   TokensToFetchPrice.add(tokenObject);
