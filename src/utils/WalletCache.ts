@@ -14,16 +14,20 @@ class WalletCache {
     // Create two connections - one for subscribing and one for getting data
     const [commandClient, subClient] = await Promise.all([
       getRedisInstance({
-        host: process.env.REDIS_HOST || "redis-12945.c300.eu-central-1-1.ec2.redns.redis-cloud.com",
-        port: parseInt(process.env.REDIS_PORT || "12945"),
-        username: process.env.REDIS_USERNAME || "default",
-        password: process.env.REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
+        host:
+          process.env.ENVIO_REDIS_HOST ||
+          "redis-12945.c300.eu-central-1-1.ec2.redns.redis-cloud.com",
+        port: parseInt(process.env.ENVIO_REDIS_PORT || "12945"),
+        username: process.env.ENVIO_REDIS_USERNAME || "default",
+        password: process.env.ENVIO_REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
       }),
       getRedisInstance({
-        host: process.env.REDIS_HOST || "redis-12945.c300.eu-central-1-1.ec2.redns.redis-cloud.com",
-        port: parseInt(process.env.REDIS_PORT || "12945"),
-        username: process.env.REDIS_USERNAME || "default",
-        password: process.env.REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
+        host:
+          process.env.ENVIO_REDIS_HOST ||
+          "redis-12945.c300.eu-central-1-1.ec2.redns.redis-cloud.com",
+        port: parseInt(process.env.ENVIO_REDIS_PORT || "12945"),
+        username: process.env.ENVIO_REDIS_USERNAME || "default",
+        password: process.env.ENVIO_REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
         isSubscriptionClient: true,
       }),
     ]);
