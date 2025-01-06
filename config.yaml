@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: clave-indexer
+description: Clave Indexer
+networks:
+  - id: 324
+    start_block: 9767
+    contracts:
+      - name: ERC20 # Both for ERC20Transfer and Venus
+        handler: src/ERC20Handler.ts
+        events:
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
+      - name: SyncswapMaster
+        handler: src/SyncswapHandler.ts
+        address: 0xbB05918E9B4bA9Fe2c8384d223f0844867909Ffb
+        events:
+          - event: "RegisterPool(address indexed factory, address indexed pool, uint16 indexed poolType, bytes data)"
+      - name: ClaggMain
+        handler: src/ClaggHandler.ts
+        address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
+        events:
+          - event: "AdapterAdded(address indexed adapter)"
+          - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+          - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+# Rollback on reorg mode currently incurs a performance hit on historical sync
+# while developing an indexer we recommend setting this to false
+rollback_on_reorg: false
+# 24805087
+
+# 9767 syncswap first block

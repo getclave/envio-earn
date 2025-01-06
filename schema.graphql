@@ -1,0 +1,78 @@
+type AccountIdleBalance {
+  id: ID!
+  address: String! @index
+  balance: BigInt!
+  token: Token! @index
+}
+
+type HistoricalAccountIdleBalance {
+  id: ID!
+  address: String! @index
+  balance: BigInt!
+  token: Token! @index
+  timestamp: BigInt! @index
+}
+
+type Token {
+  id: ID!
+  name: String
+  symbol: String
+  decimals: Int
+  price: Float
+}
+
+type AccountVenusPosition {
+  id: ID!
+  userAddress: String! @index
+  venusPool: VenusPool! @index
+  shareBalance: BigInt!
+}
+
+type VenusPool {
+  id: ID!
+  address: String! @index
+  name: String
+  symbol: String
+  underlyingToken: Token @index
+  tokenPerShare: BigInt!
+}
+
+type AccountSyncswapPosition {
+  id: ID!
+  userAddress: String! @index
+  syncswapPool: SyncswapPool! @index
+  shareBalance: BigInt!
+}
+
+type SyncswapPool {
+  id: ID!
+  name: String
+  symbol: String
+  address: String! @index
+  underlyingToken: Token @index
+  underlyingToken2: Token @index
+  tokenPerShare: BigInt!
+  tokenPerShare2: BigInt!
+  poolType: BigInt
+}
+
+type AccountClaggPosition {
+  id: ID!
+  userAddress: String! @index
+  claggPool: ClaggPool! @index
+  shareBalance: BigInt!
+}
+
+type ClaggPool {
+  id: ID!
+  address: String! @index
+  underlyingToken: Token @index
+  adapter: ClaggAdapter
+  totalLiquidity: BigInt
+  totalSupply: BigInt
+}
+
+type ClaggAdapter {
+  id: ID!
+  address: String! @index
+}
