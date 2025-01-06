@@ -13,3 +13,13 @@ pnpm-lock.yaml
 .DS_Store
 .idea/
 .vscode/
+
+# Build and generated files
+dist/
+build/
+out/
+.next/
+generated/
+
+# Git
+.git/
