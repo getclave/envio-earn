@@ -82,17 +82,13 @@ function calculateLPTokenPrice(
 
   if (poolType === 1n) {
     // Classic Pool
-    // For classic pools, LP share is based on sqrt(k)
-    // Multiply by 2 since LP represents both tokens
-    return (2n * reserve0 * BigInt(1e18)) / totalSupply;
+    // Each LP token represents a proportional share of the reserves
+    return (reserve0 * BigInt(1e18)) / totalSupply;
   } else if (poolType === 2n) {
     // Stable Pool
-    // Adjust reserves using precision multipliers like in the contract
+    // Adjust reserves using precision multipliers
     const adjustedReserve0 = reserve0 * token0PrecisionMultiplier;
-
-    // Calculate value using adjusted reserves
-    // Multiply by 2 since LP represents both tokens
-    return (2n * adjustedReserve0 * BigInt(1e18)) / (totalSupply * token0PrecisionMultiplier);
+    return (adjustedReserve0 * BigInt(1e18)) / (totalSupply * token0PrecisionMultiplier);
   }
 
   throw new Error("Invalid pool type");
