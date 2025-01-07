@@ -97,7 +97,7 @@ SyncswapPool.Burn.handler(async ({ event, context }) => {
   }
 });
 
-export const SyncswapHandler = async ({
+export const SyncswapAccountHandler = async ({
   event,
   context,
   loaderReturn,

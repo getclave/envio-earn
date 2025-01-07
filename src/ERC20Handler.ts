@@ -2,12 +2,12 @@ import { ERC20, AccountIdleBalance, Token } from "generated";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { walletCache } from "./utils/WalletCache";
 import { VenusPoolAddresses } from "./constants/VenusPools";
-import { VenusHandler } from "./VenusHandler";
 import { venusShareFetcher } from "./utils/VenusShareFetcher";
 import { SyncswapPoolsToFetchShare } from "./utils/SyncswapFetcher";
-import { SyncswapHandler } from "./SyncswapHandler";
+import { SyncswapAccountHandler } from "./SyncswapHandler";
 import { Address } from "viem";
 import { claggShareFetcher } from "./utils/ClaggFetcher";
+import { VenusAccountHandler } from "./VenusHandler";
 
 ERC20.Transfer.handlerWithLoader({
   loader: async ({ event, context }) => {
@@ -50,10 +50,10 @@ ERC20.Transfer.handlerWithLoader({
 
     //* Route to earn handlers from ERC20
     if (VenusPoolAddresses.includes(event.srcAddress.toLowerCase())) {
-      return await VenusHandler({ event, context, loaderReturn });
+      return await VenusAccountHandler({ event, context, loaderReturn });
     }
     if (SyncswapPoolsToFetchShare.has(event.srcAddress.toLowerCase() as Address)) {
-      return await SyncswapHandler({ event, context, loaderReturn });
+      return await SyncswapAccountHandler({ event, context, loaderReturn });
     }
 
     if (claveAddresses.size == 0) {
