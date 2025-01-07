@@ -1,5 +1,5 @@
 import { Address, erc20Abi } from "viem";
-import { client } from "./Client";
+import { client } from "../viem/Client";
 import { getContract } from "viem";
 import { handlerContext, Token } from "generated";
 

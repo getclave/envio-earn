@@ -4,7 +4,7 @@ import { ClaggAdaptersToAskPools, ClaggPoolsToFetchShare } from "./utils/ClaggFe
 import { Address, decodeFunctionResult, encodeFunctionData, zeroAddress } from "viem";
 import { ClaggAdapterABI } from "./abi/ClaggAdapter";
 import { client } from "./viem/Client";
-import { getOrCreateToken } from "./viem/Contract";
+import { getOrCreateToken } from "./utils/GetTokenData";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
 
 ClaggMain.AdapterAdded.handler(async ({ event, context }) => {

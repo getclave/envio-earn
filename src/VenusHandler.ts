@@ -3,7 +3,7 @@ import { VenusPoolsToFetchShare } from "./utils/VenusShareFetcher";
 import { Address, getContract } from "viem";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
-import { getOrCreateToken } from "./viem/Contract";
+import { getOrCreateToken } from "./utils/GetTokenData";
 import { VenusPool_t } from "generated/src/db/Entities.gen";
 
 export const VenusHandler = async ({

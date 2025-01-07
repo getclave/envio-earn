@@ -1,5 +1,5 @@
 import { ERC20, AccountIdleBalance, Token } from "generated";
-import { getOrCreateToken } from "./viem/Contract";
+import { getOrCreateToken } from "./utils/GetTokenData";
 import { walletCache } from "./utils/WalletCache";
 import { VenusPoolAddresses } from "./constants/VenusPools";
 import { VenusHandler } from "./VenusHandler";

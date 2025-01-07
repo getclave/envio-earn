@@ -10,7 +10,7 @@ import { SyncswapPool_t } from "generated/src/db/Entities.gen";
 import { SyncswapPoolsToFetchShare } from "./utils/SyncswapFetcher";
 import { SyncswapPoolABI } from "./abi/SyncswapPool";
 import { client } from "./viem/Client";
-import { getOrCreateToken } from "./viem/Contract";
+import { getOrCreateToken } from "./utils/GetTokenData";
 
 SyncswapMaster.RegisterPool.handler(async ({ event, context }) => {
   const contract = getContract({
