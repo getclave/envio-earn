@@ -14,6 +14,12 @@ networks:
         address: 0xbB05918E9B4bA9Fe2c8384d223f0844867909Ffb
         events:
           - event: "RegisterPool(address indexed factory, address indexed pool, uint16 indexed poolType, bytes data)"
+      - name: SyncswapPool
+        handler: src/SyncswapHandler.ts
+        events:
+          - event: "Sync(uint reserve0, uint reserve1)"
+          - event: "Mint(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
+          - event: "Burn(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
       - name: ClaggMain
         handler: src/ClaggHandler.ts
         address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c

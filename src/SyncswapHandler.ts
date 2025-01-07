@@ -19,36 +19,82 @@ SyncswapMaster.RegisterPool.handler(async ({ event, context }) => {
     client,
   });
 
-  const [name, symbol, underlyingToken, underlyingToken2, poolType] = await client.multicall({
+  const [
+    name,
+    symbol,
+    underlyingToken,
+    underlyingToken2,
+    poolType,
+    token0Precision,
+    token1Precision,
+  ] = await client.multicall({
     contracts: [
       { ...contract, functionName: "name" },
       { ...contract, functionName: "symbol" },
       { ...contract, functionName: "token0" },
       { ...contract, functionName: "token1" },
       { ...contract, functionName: "poolType" },
+      { ...contract, functionName: "token0PrecisionMultiplier" },
+      { ...contract, functionName: "token1PrecisionMultiplier" },
     ],
   });
 
-  const token = await context.Token.get((underlyingToken.result as Address).toLowerCase());
-  const createdToken = await getOrCreateToken(underlyingToken.result as Address, context, token);
-
-  const token2 = await context.Token.get((underlyingToken2.result as Address).toLowerCase());
-  const createdToken2 = await getOrCreateToken(underlyingToken2.result as Address, context, token2);
+  const [createdToken, createdToken2] = await Promise.all([
+    getOrCreateToken(underlyingToken.result as Address, context),
+    getOrCreateToken(underlyingToken2.result as Address, context),
+  ]);
 
   const newSyncswapPool: SyncswapPool_t = {
     id: event.params.pool.toLowerCase(),
     address: event.params.pool.toLowerCase(),
-    tokenPerShare: 0n,
-    tokenPerShare2: 0n,
     underlyingToken_id: createdToken.id,
     underlyingToken2_id: createdToken2.id,
     name: name.result as string,
     symbol: symbol.result as string,
     poolType: poolType.result as bigint,
+    token0PrecisionMultiplier: token0Precision.result as bigint,
+    token1PrecisionMultiplier: token1Precision.result as bigint,
+    reserve0: 0n,
+    reserve1: 0n,
+    totalSupply: 0n,
   };
 
   context.SyncswapPool.set(newSyncswapPool);
-  SyncswapPoolsToFetchShare.add(newSyncswapPool.address as Address);
+});
+
+SyncswapMaster.RegisterPool.contractRegister(async ({ event, context }) => {
+  context.addSyncswapPool(event.params.pool.toLowerCase() as Address);
+});
+
+SyncswapPool.Sync.handler(async ({ event, context }) => {
+  const pool = await context.SyncswapPool.get(event.srcAddress.toLowerCase());
+  if (pool) {
+    context.SyncswapPool.set({
+      ...pool,
+      reserve0: event.params.reserve0,
+      reserve1: event.params.reserve1,
+    });
+  }
+});
+
+SyncswapPool.Mint.handler(async ({ event, context }) => {
+  const pool = await context.SyncswapPool.get(event.srcAddress.toLowerCase());
+  if (pool) {
+    context.SyncswapPool.set({
+      ...pool,
+      totalSupply: pool.totalSupply + event.params.liquidity,
+    });
+  }
+});
+
+SyncswapPool.Burn.handler(async ({ event, context }) => {
+  const pool = await context.SyncswapPool.get(event.srcAddress.toLowerCase());
+  if (pool) {
+    context.SyncswapPool.set({
+      ...pool,
+      totalSupply: pool.totalSupply - event.params.liquidity,
+    });
+  }
 });
 
 export const SyncswapHandler = async ({

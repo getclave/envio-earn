@@ -2,7 +2,6 @@ import { Address, erc20Abi } from "viem";
 import { client } from "./Client";
 import { getContract } from "viem";
 import { handlerContext, Token } from "generated";
-import { TokensToFetchPrice } from "../utils/PriceFetcher";
 
 const getTokenData = async (tokenAddress: string) => {
   const tokenContract = getContract({
@@ -35,11 +34,8 @@ const getTokenData = async (tokenAddress: string) => {
   return { name, symbol, decimals };
 };
 
-export const getOrCreateToken = async (
-  tokenAddress: string,
-  context: handlerContext,
-  token?: Token
-) => {
+export const getOrCreateToken = async (tokenAddress: string, context: handlerContext) => {
+  const token = await context.Token.get(tokenAddress.toLowerCase());
   if (token != undefined && token.name != undefined) {
     return token;
   }
@@ -51,12 +47,9 @@ export const getOrCreateToken = async (
     name: tokenData.name.result,
     symbol: tokenData.symbol.result,
     decimals: tokenData.decimals.result,
-    price: 0,
   };
 
   context.Token.set(tokenObject);
-
-  TokensToFetchPrice.add(tokenObject);
 
   return tokenObject;
 };

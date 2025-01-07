@@ -1,3 +1,5 @@
+//!!! DEPRECATED !!!
+
 import { ERC20_Transfer_event, handlerContext, Token } from "generated";
 import { zeroAddress } from "viem";
 
@@ -73,7 +75,6 @@ class PriceFetcher {
           name: token.name,
           symbol: token.symbol,
           decimals: token.decimals,
-          price: lowercaseResponse[address],
         };
         context.Token.set(tokenObject);
       }

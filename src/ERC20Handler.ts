@@ -1,11 +1,10 @@
 import { ERC20, AccountIdleBalance, Token } from "generated";
 import { getOrCreateToken } from "./viem/Contract";
 import { walletCache } from "./utils/WalletCache";
-import { priceFetcher } from "./utils/PriceFetcher";
 import { VenusPoolAddresses } from "./constants/VenusPools";
 import { VenusHandler } from "./VenusHandler";
 import { venusShareFetcher } from "./utils/VenusShareFetcher";
-import { SyncswapPoolsToFetchShare, syncswapShareFetcher } from "./utils/SyncswapFetcher";
+import { SyncswapPoolsToFetchShare } from "./utils/SyncswapFetcher";
 import { SyncswapHandler } from "./SyncswapHandler";
 import { Address } from "viem";
 import { claggShareFetcher } from "./utils/ClaggFetcher";
@@ -41,9 +40,9 @@ ERC20.Transfer.handlerWithLoader({
     };
 
     try {
-      await priceFetcher.genOdosTokenPrices(context, event);
+      //? Disabled: await priceFetcher.genOdosTokenPrices(context, event);
       await venusShareFetcher.genVenusPoolShares(context, event);
-      await syncswapShareFetcher.genSyncswapPoolShares(context, event);
+      //? Disabled: await syncswapShareFetcher.genSyncswapPoolShares(context, event);
       await claggShareFetcher.genClaggPoolShares(context, event);
     } catch (e: any) {
       context.log.error(e?.message as string);
@@ -61,7 +60,7 @@ ERC20.Transfer.handlerWithLoader({
       return;
     }
 
-    const generatedToken = await getOrCreateToken(event.srcAddress.toLowerCase(), context, token);
+    const generatedToken = await getOrCreateToken(event.srcAddress.toLowerCase(), context);
 
     if (event.params.from === event.params.to) {
       return;

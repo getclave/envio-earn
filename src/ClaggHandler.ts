@@ -38,18 +38,20 @@ ClaggMain.Deposit.handlerWithLoader({
               functionName: "getPoolConfig",
               args: [event.params.pool.toLowerCase()],
             }) + adapter.slice(2);
+
           const poolConfigResponse = await client.call({
             to: ClaggMainAddress as `0x${string}`,
             data: poolConfigCalldata as `0x${string}`,
           });
+
           const decodedPoolConfig = decodeFunctionResult({
             abi: ClaggAdapterABI,
             functionName: "getPoolConfig",
             data: poolConfigResponse.data as `0x${string}`,
           }) as { token: string; performanceFee: bigint; nonClaveFee: bigint };
+
           if (decodedPoolConfig.token != zeroAddress) {
-            const token = await context.Token.get(decodedPoolConfig.token.toLowerCase());
-            await getOrCreateToken(decodedPoolConfig.token.toLowerCase(), context, token);
+            await getOrCreateToken(decodedPoolConfig.token.toLowerCase(), context);
             const pool: ClaggPool_t = {
               id: event.params.pool.toLowerCase(),
               address: event.params.pool.toLowerCase(),
@@ -63,11 +65,10 @@ ClaggMain.Deposit.handlerWithLoader({
             ClaggPoolsToFetchShare.add(event.params.pool.toLowerCase() as Address);
             break;
           }
-        } catch (e) {
-          console.log(e);
+        } catch (e: any) {
+          context.log.error(e.message as string);
         }
       }
-      //TODO Add pool to claggfetcher for calculating sharepertoken
     }
     const createdUser: AccountClaggPosition_t = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),

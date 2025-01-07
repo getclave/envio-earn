@@ -1,3 +1,5 @@
+//!!! DEPRECATED !!!
+
 import { ERC20_Transfer_event, handlerContext } from "generated";
 import { Address, getContract } from "viem";
 import { client } from "../viem/Client";
@@ -57,11 +59,14 @@ class SyncswapShareFetcher {
         address,
         name: pool?.name,
         symbol: pool?.symbol,
-        tokenPerShare: price,
-        tokenPerShare2: price2,
         poolType: pool?.poolType,
         underlyingToken_id: pool?.underlyingToken_id,
         underlyingToken2_id: pool?.underlyingToken2_id,
+        reserve0: (reserves.result as Array<bigint>)[0],
+        reserve1: (reserves.result as Array<bigint>)[1],
+        totalSupply: totalSupply.result as bigint,
+        token0PrecisionMultiplier: token0Precision.result as bigint,
+        token1PrecisionMultiplier: token1Precision.result as bigint,
       });
     }
   }
