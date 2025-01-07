@@ -18,8 +18,17 @@ networks:
         handler: src/SyncswapHandler.ts
         events:
           - event: "Sync(uint reserve0, uint reserve1)"
+            field_selection:
+              transaction_fields:
+                - "from"
           - event: "Mint(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
+            field_selection:
+              transaction_fields:
+                - "from"
           - event: "Burn(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
+            field_selection:
+              transaction_fields:
+                - "from"
       - name: ClaggMain
         handler: src/ClaggHandler.ts
         address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
