@@ -52,6 +52,10 @@ ERC20.Transfer.handlerWithLoader({
       context.log.error(e?.message as string);
     }
 
+    if (claveAddresses.size == 0) {
+      return;
+    }
+
     //* Route to earn handlers from ERC20
 
     //* if (VenusPoolAddresses.includes(event.srcAddress.toLowerCase())) {
@@ -59,10 +63,6 @@ ERC20.Transfer.handlerWithLoader({
     // }
     if (SyncswapPools.has(event.srcAddress.toLowerCase() as Address)) {
       return await SyncswapAccountHandler({ event, context, loaderReturn });
-    }
-
-    if (claveAddresses.size == 0) {
-      return;
     }
 
     if (senderAccount == null) {

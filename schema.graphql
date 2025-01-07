@@ -42,6 +42,11 @@ enum Protocol {
   Clagg
 }
 
+type PoolRegistry {
+  id: ID!
+  protocol: Protocol!
+}
+
 type AccountEarnBalance {
   id: ID!
   userAddress: String! @index
@@ -84,6 +89,7 @@ type ClaggPool {
   totalLiquidity: BigInt
   totalSupply: BigInt
   protocol: Protocol!
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "id")
 }
 
 type ClaggAdapter {

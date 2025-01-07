@@ -200,6 +200,11 @@ async function getOrCreatePool(poolAddress: Address, context: handlerContext) {
       protocol: "Syncswap",
     };
 
+    context.PoolRegistry.set({
+      id: poolAddress.toLowerCase(),
+      protocol: "Syncswap",
+    });
+
     return newSyncswapPool;
   }
 

@@ -1,10 +1,10 @@
-import { AccountVenusPosition, VenusPool, ERC20_Transfer_event, handlerContext } from "generated";
+import { Account, ERC20_Transfer_event, handlerContext } from "generated";
 import { VenusPoolsToFetchShare } from "./utils/VenusShareFetcher";
 import { Address, getContract } from "viem";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
-import { VenusPool_t } from "generated/src/db/Entities.gen";
+import { AccountEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
 
 export const VenusAccountHandler = async ({
   event,
@@ -15,9 +15,15 @@ export const VenusAccountHandler = async ({
   context: handlerContext;
   loaderReturn: any;
 }) => {
-  const { claveAddresses } = loaderReturn as {
+  const { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
     claveAddresses: Set<string>;
+    senderAccount: Account | undefined;
+    receiverAccount: Account | undefined;
   };
+
+  if (claveAddresses.size == 0) {
+    return;
+  }
 
   const venusPool = await context.VenusPool.get(event.srcAddress.toLowerCase());
 
@@ -45,54 +51,71 @@ export const VenusAccountHandler = async ({
       underlyingToken_id: createdToken.id,
       name: name.result as string,
       symbol: symbol.result as string,
+      protocol: "Venus",
     };
 
     context.VenusPool.set(newVenusPool);
+    context.PoolRegistry.set({
+      id: event.srcAddress.toLowerCase(),
+      protocol: "Venus",
+    });
     VenusPoolsToFetchShare.add(newVenusPool.address as Address);
   }
 
-  if (claveAddresses.size == 0) {
-    return;
+  if (senderAccount == null) {
+    context.Account.set({
+      id: event.params.from.toLowerCase(),
+      address: event.params.from.toLowerCase(),
+    });
+  }
+
+  if (receiverAccount == null) {
+    context.Account.set({
+      id: event.params.to.toLowerCase(),
+      address: event.params.to.toLowerCase(),
+    });
   }
 
   if (event.params.from === event.params.to) {
     return;
   }
 
-  const senderAccount = await context.AccountVenusPosition.get(
+  const senderAccountBalance = await context.AccountEarnBalance.get(
     event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
   );
-  const receiverAccount = await context.AccountVenusPosition.get(
+  const receiverAccountBalance = await context.AccountEarnBalance.get(
     event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
   );
 
   if (claveAddresses.has(event.params.from.toLowerCase())) {
     // create the account
-    let accountObject: AccountVenusPosition = {
+    let accountObject: AccountEarnBalance_t = {
       id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
-        senderAccount == undefined
+        senderAccountBalance == undefined
           ? 0n - event.params.value
-          : senderAccount.shareBalance - event.params.value,
+          : senderAccountBalance.shareBalance - event.params.value,
       userAddress: event.params.from.toLowerCase(),
-      venusPool_id: event.srcAddress.toLowerCase(),
+      protocol: "Venus",
+      poolAddress: event.srcAddress.toLowerCase(),
     };
 
-    context.AccountVenusPosition.set(accountObject);
+    context.AccountEarnBalance.set(accountObject);
   }
 
   if (claveAddresses.has(event.params.to.toLowerCase())) {
     // create new account
-    let accountObject: AccountVenusPosition = {
+    let accountObject: AccountEarnBalance_t = {
       id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
-        receiverAccount == undefined
+        receiverAccountBalance == undefined
           ? event.params.value
-          : event.params.value + receiverAccount.shareBalance,
+          : event.params.value + receiverAccountBalance.shareBalance,
       userAddress: event.params.to.toLowerCase(),
-      venusPool_id: event.srcAddress.toLowerCase(),
+      protocol: "Venus",
+      poolAddress: event.srcAddress.toLowerCase(),
     };
 
-    context.AccountVenusPosition.set(accountObject);
+    context.AccountEarnBalance.set(accountObject);
   }
 };
