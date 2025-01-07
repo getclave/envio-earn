@@ -1,5 +1,6 @@
 import {
-  AccountSyncswapPosition,
+  Account,
+  AccountEarnBalance,
   ERC20_Transfer_event,
   handlerContext,
   SyncswapMaster,
@@ -12,10 +13,12 @@ import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { walletCache } from "./utils/WalletCache";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
+import { SyncswapPools } from "./ERC20Handler";
 
 SyncswapMaster.RegisterPool.contractRegister(
   async ({ event, context }) => {
     context.addSyncswapPool(event.params.pool.toLowerCase() as Address);
+    SyncswapPools.add(event.params.pool.toLowerCase() as Address);
   },
   { preRegisterDynamicContracts: true }
 );
@@ -81,53 +84,71 @@ export const SyncswapAccountHandler = async ({
   context: handlerContext;
   loaderReturn: any;
 }) => {
-  const { claveAddresses } = loaderReturn as {
+  const { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
     claveAddresses: Set<string>;
+    senderAccount: Account;
+    receiverAccount: Account;
   };
 
   if (claveAddresses.size == 0) {
     return;
   }
 
+  if (senderAccount == null) {
+    context.Account.set({
+      id: event.params.from.toLowerCase(),
+      address: event.params.from.toLowerCase(),
+    });
+  }
+
+  if (receiverAccount == null) {
+    context.Account.set({
+      id: event.params.to.toLowerCase(),
+      address: event.params.to.toLowerCase(),
+    });
+  }
+
   if (event.params.from === event.params.to) {
     return;
   }
 
-  const senderAccount = await context.AccountSyncswapPosition.get(
+  const senderAccountBalance = await context.AccountEarnBalance.get(
     event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
   );
-  const receiverAccount = await context.AccountSyncswapPosition.get(
+  const receiverAccountBalance = await context.AccountEarnBalance.get(
     event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
   );
 
   if (claveAddresses.has(event.params.from.toLowerCase())) {
     // create the account
-    let accountObject: AccountSyncswapPosition = {
+    let accountObject: AccountEarnBalance = {
       id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
-        senderAccount == undefined
+        senderAccountBalance == undefined
           ? 0n - event.params.value
-          : senderAccount.shareBalance - event.params.value,
+          : senderAccountBalance.shareBalance - event.params.value,
       userAddress: event.params.from.toLowerCase(),
-      syncswapPool_id: event.srcAddress.toLowerCase(),
+      poolAddress: event.srcAddress.toLowerCase(),
+      protocol: "Syncswap",
     };
 
-    context.AccountSyncswapPosition.set(accountObject);
+    context.AccountEarnBalance.set(accountObject);
   }
 
   if (claveAddresses.has(event.params.to.toLowerCase())) {
     // create new account
-    let accountObject: AccountSyncswapPosition = {
+    let accountObject: AccountEarnBalance = {
       id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
-        receiverAccount == undefined
+        receiverAccountBalance == undefined
           ? event.params.value
-          : event.params.value + receiverAccount.shareBalance,
+          : event.params.value + receiverAccountBalance.shareBalance,
       userAddress: event.params.to.toLowerCase(),
-      syncswapPool_id: event.srcAddress.toLowerCase(),
+      poolAddress: event.srcAddress.toLowerCase(),
+      protocol: "Syncswap",
     };
 
-    context.AccountSyncswapPosition.set(accountObject);
+    context.AccountEarnBalance.set(accountObject);
   }
 };
 
@@ -176,6 +197,7 @@ async function getOrCreatePool(poolAddress: Address, context: handlerContext) {
       reserve0: 0n,
       reserve1: 0n,
       totalSupply: 0n,
+      protocol: "Syncswap",
     };
 
     return newSyncswapPool;

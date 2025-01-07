@@ -1,3 +1,15 @@
+# ACCOUNTS
+
+type Account {
+  id: ID!
+  address: String! @index
+  idleBalances: [AccountIdleBalance!]! @derivedFrom(field: "address")
+  earnBalances: [AccountEarnBalance!]! @derivedFrom(field: "userAddress")
+  historicalIdleBalances: [HistoricalAccountIdleBalance!]! @derivedFrom(field: "address")
+}
+
+# IDLE
+
 type AccountIdleBalance {
   id: ID!
   address: String! @index
@@ -13,6 +25,8 @@ type HistoricalAccountIdleBalance {
   timestamp: BigInt! @index
 }
 
+# UTILITIES
+
 type Token {
   id: ID!
   name: String
@@ -20,10 +34,19 @@ type Token {
   decimals: Int
 }
 
-type AccountVenusPosition {
+# EARN
+
+enum Protocol {
+  Venus
+  Syncswap
+  Clagg
+}
+
+type AccountEarnBalance {
   id: ID!
   userAddress: String! @index
-  venusPool: VenusPool! @index
+  poolAddress: String! @index
+  protocol: Protocol! @index
   shareBalance: BigInt!
 }
 
@@ -34,13 +57,7 @@ type VenusPool {
   symbol: String
   underlyingToken: Token @index
   tokenPerShare: BigInt!
-}
-
-type AccountSyncswapPosition {
-  id: ID!
-  userAddress: String! @index
-  syncswapPool: SyncswapPool! @index
-  shareBalance: BigInt!
+  protocol: Protocol!
 }
 
 type SyncswapPool {
@@ -56,13 +73,7 @@ type SyncswapPool {
   reserve0: BigInt!
   reserve1: BigInt!
   totalSupply: BigInt!
-}
-
-type AccountClaggPosition {
-  id: ID!
-  userAddress: String! @index
-  claggPool: ClaggPool! @index
-  shareBalance: BigInt!
+  protocol: Protocol!
 }
 
 type ClaggPool {
@@ -72,6 +83,7 @@ type ClaggPool {
   adapter: ClaggAdapter
   totalLiquidity: BigInt
   totalSupply: BigInt
+  protocol: Protocol!
 }
 
 type ClaggAdapter {

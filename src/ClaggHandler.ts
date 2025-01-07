@@ -1,5 +1,5 @@
-import { AccountClaggPosition, ClaggMain, ClaggPool } from "generated";
-import { AccountClaggPosition_t, ClaggPool_t } from "generated/src/db/Entities.gen";
+import { AccountEarnBalance, ClaggMain, ClaggPool, Protocol } from "generated";
+import { AccountEarnBalance_t, ClaggPool_t } from "generated/src/db/Entities.gen";
 import { ClaggAdaptersToAskPools, ClaggPoolsToFetchShare } from "./utils/ClaggFetcher";
 import { Address, decodeFunctionResult, encodeFunctionData, zeroAddress } from "viem";
 import { ClaggAdapterABI } from "./abi/ClaggAdapter";
@@ -19,10 +19,10 @@ ClaggMain.Deposit.handlerWithLoader({
   loader: async ({
     event,
     context,
-  }): Promise<{ pool: ClaggPool | undefined; user: AccountClaggPosition | undefined }> => {
+  }): Promise<{ pool: ClaggPool | undefined; user: AccountEarnBalance | undefined }> => {
     const [pool, user] = await Promise.all([
       context.ClaggPool.get(event.params.pool.toLowerCase()),
-      context.AccountClaggPosition.get(event.params.user.toLowerCase()),
+      context.AccountEarnBalance.get(event.params.user.toLowerCase()),
     ]);
     return { pool, user };
   },
@@ -59,6 +59,7 @@ ClaggMain.Deposit.handlerWithLoader({
               totalLiquidity: 0n,
               totalSupply: 0n,
               underlyingToken_id: decodedPoolConfig.token.toLowerCase(),
+              protocol: "Clagg",
             };
             context.log.info("Creating new Clagg Pool " + pool.id + " with adapter " + adapter);
             context.ClaggPool.set(pool);
@@ -70,15 +71,16 @@ ClaggMain.Deposit.handlerWithLoader({
         }
       }
     }
-    const createdUser: AccountClaggPosition_t = {
+    const createdUser: AccountEarnBalance_t = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
       userAddress: event.params.user.toLowerCase(),
       shareBalance:
         user == undefined ? event.params.shares : user.shareBalance + event.params.shares,
-      claggPool_id: pool?.id ?? event.params.pool.toLowerCase(),
+      protocol: "Clagg",
+      poolAddress: event.params.pool.toLowerCase(),
     };
 
-    context.AccountClaggPosition.set(createdUser);
+    context.AccountEarnBalance.set(createdUser);
   },
 });
 
@@ -86,10 +88,10 @@ ClaggMain.Withdraw.handlerWithLoader({
   loader: async ({
     event,
     context,
-  }): Promise<{ pool: ClaggPool | undefined; user: AccountClaggPosition | undefined }> => {
+  }): Promise<{ pool: ClaggPool | undefined; user: AccountEarnBalance | undefined }> => {
     const [pool, user] = await Promise.all([
       context.ClaggPool.get(event.params.pool.toLowerCase()),
-      context.AccountClaggPosition.get(event.params.user.toLowerCase()),
+      context.AccountEarnBalance.get(event.params.user.toLowerCase()),
     ]);
     return { pool, user };
   },
@@ -101,14 +103,15 @@ ClaggMain.Withdraw.handlerWithLoader({
       //TODO Add pool to claggfetcher for calculating sharepertoken
       return;
     }
-    const createdUser: AccountClaggPosition_t = {
+    const createdUser: AccountEarnBalance_t = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
       userAddress: event.params.user.toLowerCase(),
       shareBalance:
         user == undefined ? 0n - event.params.shares : user.shareBalance - event.params.shares,
-      claggPool_id: pool?.id,
+      protocol: "Clagg",
+      poolAddress: event.params.pool.toLowerCase(),
     };
 
-    context.AccountClaggPosition.set(createdUser);
+    context.AccountEarnBalance.set(createdUser);
   },
 });
