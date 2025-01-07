@@ -14,13 +14,48 @@ networks:
         address: 0xbB05918E9B4bA9Fe2c8384d223f0844867909Ffb
         events:
           - event: "RegisterPool(address indexed factory, address indexed pool, uint16 indexed poolType, bytes data)"
-      - name: ClaggMain
-        handler: src/ClaggHandler.ts
-        address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
+      - name: SyncswapPool
+        handler: src/SyncswapHandler.ts
         events:
-          - event: "AdapterAdded(address indexed adapter)"
-          - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
-          - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+          - event: "Sync(uint reserve0, uint reserve1)"
+            field_selection:
+              transaction_fields:
+                - "from"
+          - event: "Mint(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
+            field_selection:
+              transaction_fields:
+                - "from"
+          - event: "Burn(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
+            field_selection:
+              transaction_fields:
+                - "from"
+      # - name: ClaggMain
+      #   handler: src/ClaggHandler.ts
+      #   address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
+      #   events:
+      #     - event: "AdapterAdded(address indexed adapter)"
+      #     - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+      #     - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+      - name: Venus
+        handler: src/VenusHandler.ts
+        address:
+          - 0x84064c058f2efea4ab648bb6bd7e40f83ffde39a
+          - 0x1af23bd57c62a99c59ad48236553d0dd11e49d2d
+          - 0x69cda960e3b20dfd480866fffd377ebe40bd0a46
+          - 0xaf8fd83cfcbe963211faaf1847f0f217f80b4719
+          - 0x1fa916c27c7c2c4602124a14c77dbb40a5ff1be8
+          - 0x697a70779c1a03ba2bd28b7627a902bff831b616
+        events:
+          - event: "Mint(address minter, uint256 actualMintAmount, uint256 mintTokens, uint256 accountBalance)"
+          - event: "Redeem(address redeemer, uint256 redeemAmount, uint256 redeemTokens, uint256 accountBalance)"
+          - event: "Borrow(address borrower, uint256 borrowAmount, uint256 accountBorrows, uint256 totalBorrows)"
+          - event: "RepayBorrow(address payer, address borrower, uint256 repayAmount, uint256 accountBorrows, uint256 totalBorrowsNew)"
+          - event: "BadDebtIncreased(address borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
+          - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
+          - event: "ReservesAdded(address benefactor, uint256 addAmount, uint256 newTotalReserves)"
+          - event: "ReservesReduced(address admin, uint256 reduceAmount, uint256 newTotalReserves)"
+          - event: "ProtocolSeize(address indexed borrower, address indexed protocolShareReserve, uint256 amount)"
+
 # Rollback on reorg mode currently incurs a performance hit on historical sync
 # while developing an indexer we recommend setting this to false
 rollback_on_reorg: false

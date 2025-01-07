@@ -1,3 +1,15 @@
+# ACCOUNTS
+
+type Account {
+  id: ID!
+  address: String! @index
+  idleBalances: [AccountIdleBalance!]! @derivedFrom(field: "address")
+  earnBalances: [AccountEarnBalance!]! @derivedFrom(field: "userAddress")
+  historicalIdleBalances: [HistoricalAccountIdleBalance!]! @derivedFrom(field: "address")
+}
+
+# IDLE
+
 type AccountIdleBalance {
   id: ID!
   address: String! @index
@@ -13,18 +25,33 @@ type HistoricalAccountIdleBalance {
   timestamp: BigInt! @index
 }
 
+# UTILITIES
+
 type Token {
   id: ID!
   name: String
   symbol: String
   decimals: Int
-  price: Float
 }
 
-type AccountVenusPosition {
+# EARN
+
+enum Protocol {
+  Venus
+  Syncswap
+  Clagg
+}
+
+type PoolRegistry {
+  id: ID!
+  protocol: Protocol!
+}
+
+type AccountEarnBalance {
   id: ID!
   userAddress: String! @index
-  venusPool: VenusPool! @index
+  poolAddress: String! @index
+  protocol: Protocol! @index
   shareBalance: BigInt!
 }
 
@@ -34,14 +61,12 @@ type VenusPool {
   name: String
   symbol: String
   underlyingToken: Token @index
-  tokenPerShare: BigInt!
-}
-
-type AccountSyncswapPosition {
-  id: ID!
-  userAddress: String! @index
-  syncswapPool: SyncswapPool! @index
-  shareBalance: BigInt!
+  totalCash: BigInt! # From Mint/Redeem/Borrow/Repay
+  totalBorrows: BigInt! # From Borrow/RepayBorrow
+  totalReserves: BigInt! # From ReservesAdded/ReservesReduced
+  badDebt: BigInt! # From BadDebtIncreased/BadDebtRecovered
+  totalSupply: BigInt! # From Mint/Redeem/Seize
+  protocol: Protocol!
 }
 
 type SyncswapPool {
@@ -51,16 +76,13 @@ type SyncswapPool {
   address: String! @index
   underlyingToken: Token @index
   underlyingToken2: Token @index
-  tokenPerShare: BigInt!
-  tokenPerShare2: BigInt!
   poolType: BigInt
-}
-
-type AccountClaggPosition {
-  id: ID!
-  userAddress: String! @index
-  claggPool: ClaggPool! @index
-  shareBalance: BigInt!
+  token0PrecisionMultiplier: BigInt
+  token1PrecisionMultiplier: BigInt
+  reserve0: BigInt!
+  reserve1: BigInt!
+  totalSupply: BigInt!
+  protocol: Protocol!
 }
 
 type ClaggPool {
@@ -70,6 +92,8 @@ type ClaggPool {
   adapter: ClaggAdapter
   totalLiquidity: BigInt
   totalSupply: BigInt
+  protocol: Protocol!
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "id")
 }
 
 type ClaggAdapter {

@@ -1,71 +1,4 @@
-import { ERC20_Transfer_event, handlerContext } from "generated";
-import { Address, getContract } from "viem";
-import { client } from "../viem/Client";
-import { SyncswapPoolABI } from "../abi/SyncswapPool";
-
-const THRESHOLD_BLOCK_NUMBER = 52500000;
-
-export const SyncswapPoolsToFetchShare = new Set<Address>();
-
-class SyncswapShareFetcher {
-  latestHandledBlock = 0;
-  syncInterval = 86400;
-  asyncInterval = 1000000;
-
-  public async genSyncswapPoolShares(
-    context: handlerContext,
-    event: ERC20_Transfer_event
-  ): Promise<void> {
-    const interval =
-      event.block.number > THRESHOLD_BLOCK_NUMBER ? this.syncInterval : this.asyncInterval;
-    if (event.block.number <= this.latestHandledBlock + interval) {
-      return;
-    }
-    if (SyncswapPoolsToFetchShare.size == 0) {
-      return;
-    }
-
-    this.latestHandledBlock = event.block.number;
-
-    const poolList = Array.from(SyncswapPoolsToFetchShare);
-    context.log.info("Fetching Sync shares for " + poolList.length + " pools");
-    for (let address of poolList) {
-      const pool = await context.SyncswapPool.get(address);
-      const contract = getContract({ address, abi: SyncswapPoolABI, client });
-      const [reserves, totalSupply, token0Precision, token1Precision] = await client.multicall({
-        contracts: [
-          { ...contract, functionName: "getReserves" },
-          { ...contract, functionName: "totalSupply" },
-          { ...contract, functionName: "token0PrecisionMultiplier" },
-          { ...contract, functionName: "token1PrecisionMultiplier" },
-        ],
-      });
-      const price = calculateLPTokenPrice(
-        (reserves.result as Array<bigint>)[0],
-        totalSupply.result as bigint,
-        pool?.poolType as bigint,
-        token0Precision.result as bigint
-      );
-      const price2 = calculateLPTokenPrice(
-        (reserves.result as Array<bigint>)[1],
-        totalSupply.result as bigint,
-        pool?.poolType as bigint,
-        token1Precision.result as bigint
-      );
-      context.SyncswapPool.set({
-        id: address,
-        address,
-        name: pool?.name,
-        symbol: pool?.symbol,
-        tokenPerShare: price,
-        tokenPerShare2: price2,
-        poolType: pool?.poolType,
-        underlyingToken_id: pool?.underlyingToken_id,
-        underlyingToken2_id: pool?.underlyingToken2_id,
-      });
-    }
-  }
-}
+//!!! DEPRECATED !!!
 
 function calculateLPTokenPrice(
   reserve0: bigint,
@@ -92,5 +25,3 @@ function calculateLPTokenPrice(
 
   throw new Error("Invalid pool type");
 }
-
-export const syncswapShareFetcher = new SyncswapShareFetcher();
