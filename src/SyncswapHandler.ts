@@ -11,8 +11,6 @@ import { SyncswapPool_t } from "generated/src/db/Entities.gen";
 import { SyncswapPoolABI } from "./abi/SyncswapPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
-import { walletCache } from "./utils/WalletCache";
-import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { SyncswapPools } from "./ERC20Handler";
 
 SyncswapMaster.RegisterPool.contractRegister(
@@ -24,14 +22,6 @@ SyncswapMaster.RegisterPool.contractRegister(
 );
 
 SyncswapPool.Sync.handler(async ({ event, context }) => {
-  const sender = event.transaction.from?.toLowerCase();
-  const isClagg = sender && sender.toLowerCase() == ClaggMainAddress.toLowerCase();
-  if (sender && !isClagg) {
-    const claveAdd = await walletCache.bulkCheckClaveWallets([sender]);
-    if (claveAdd.size == 0) {
-      return;
-    }
-  }
   const syncPool = await getOrCreatePool(event.srcAddress as Address, context);
 
   context.SyncswapPool.set({
@@ -42,14 +32,6 @@ SyncswapPool.Sync.handler(async ({ event, context }) => {
 });
 
 SyncswapPool.Mint.handler(async ({ event, context }) => {
-  const sender = event.transaction.from?.toLowerCase();
-  const isClagg = sender && sender.toLowerCase() == ClaggMainAddress.toLowerCase();
-  if (sender && !isClagg) {
-    const claveAdd = await walletCache.bulkCheckClaveWallets([sender]);
-    if (claveAdd.size == 0) {
-      return;
-    }
-  }
   const syncPool = await getOrCreatePool(event.srcAddress as Address, context);
 
   context.SyncswapPool.set({
@@ -59,14 +41,6 @@ SyncswapPool.Mint.handler(async ({ event, context }) => {
 });
 
 SyncswapPool.Burn.handler(async ({ event, context }) => {
-  const sender = event.transaction.from?.toLowerCase();
-  const isClagg = sender && sender.toLowerCase() == ClaggMainAddress.toLowerCase();
-  if (sender && !isClagg) {
-    const claveAdd = await walletCache.bulkCheckClaveWallets([sender]);
-    if (claveAdd.size == 0) {
-      return;
-    }
-  }
   const syncPool = await getOrCreatePool(event.srcAddress as Address, context);
 
   context.SyncswapPool.set({
@@ -204,6 +178,8 @@ async function getOrCreatePool(poolAddress: Address, context: handlerContext) {
       id: poolAddress.toLowerCase(),
       protocol: "Syncswap",
     });
+
+    context.SyncswapPool.set(newSyncswapPool);
 
     return newSyncswapPool;
   }
