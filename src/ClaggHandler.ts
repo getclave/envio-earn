@@ -1,4 +1,4 @@
-import { AccountEarnBalance, ClaggMain, ClaggPool, Protocol } from "generated";
+import { AccountEarnBalance, ClaggMain, ClaggPool } from "generated";
 import { AccountEarnBalance_t, ClaggPool_t } from "generated/src/db/Entities.gen";
 import { ClaggAdaptersToAskPools, ClaggPoolsToFetchShare } from "./utils/ClaggFetcher";
 import { Address, decodeFunctionResult, encodeFunctionData, zeroAddress } from "viem";
