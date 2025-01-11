@@ -3,7 +3,7 @@ name: clave-indexer
 description: Clave Indexer
 networks:
   - id: 324
-    start_block: 9767
+    start_block: 42299703
     contracts:
       - name: ERC20 # Both for ERC20Transfer and Venus
         handler: src/ERC20Handler.ts
@@ -46,16 +46,16 @@ networks:
           - 0x1fa916c27c7c2c4602124a14c77dbb40a5ff1be8
           - 0x697a70779c1a03ba2bd28b7627a902bff831b616
         events:
-          - event: "Mint(address indexed minter, uint256 actualMintAmount, uint256 mintTokens, uint256 accountBalance)"
+          - event: "Mint(address indexed minter, uint256 mintAmount, uint256 mintTokens, uint256 accountBalance)"
           - event: "Redeem(address indexed redeemer, uint256 redeemAmount, uint256 redeemTokens, uint256 accountBalance)"
           - event: "Borrow(address indexed borrower, uint256 borrowAmount, uint256 accountBorrows, uint256 totalBorrows)"
-          - event: "RepayBorrow(address indexed payer, address indexed borrower, uint256 repayAmount, uint256 accountBorrows, uint256 totalBorrowsNew)"
+          - event: "RepayBorrow(address indexed payer, address indexed borrower, uint256 repayAmount, uint256 accountBorrows, uint256 totalBorrows)"
+          - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
           - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
           - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
           - event: "ReservesAdded(address indexed benefactor, uint256 addAmount, uint256 newTotalReserves)"
-          - event: "ReservesReduced(address indexed admin, uint256 reduceAmount, uint256 newTotalReserves)"
-          - event: "ProtocolSeize(address indexed borrower, address indexed protocolShareReserve, uint256 amount)"
-
+          - event: "ReservesReduced(address indexed protocolShareReserve, uint256 reduceAmount, uint256 newTotalReserves)"
+          - event: "ProtocolSeize(address indexed from, address indexed to, uint256 amount)"
 # Rollback on reorg mode currently incurs a performance hit on historical sync
 # while developing an indexer we recommend setting this to false
 rollback_on_reorg: false
