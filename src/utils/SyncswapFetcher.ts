@@ -6,7 +6,7 @@ function calculateLPTokenPrice(
   poolType: bigint,
   token0PrecisionMultiplier: bigint = 1n
 ) {
-  if (totalSupply === 0n) return 0n;
+  if (totalSupply <= 1000n) return 0n;
 
   // Convert to BigInt
   reserve0 = BigInt(reserve0);

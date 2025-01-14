@@ -1,14 +1,41 @@
-import { Account, ERC20_Transfer_event, handlerContext, loaderContext, Venus } from "generated";
+import {
+  Account,
+  ERC20_Transfer_event,
+  handlerContext,
+  loaderContext,
+  Venus,
+  Venus_Mint_event,
+  Venus_Redeem_event,
+} from "generated";
 import { Address, getContract } from "viem";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { AccountEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
 
+let latestExchangeRateBlock = 0;
+
+type LoaderEvent = Venus_Mint_event;
+
 // Common loader for all Venus handlers
-const venusPoolLoader = async ({ event, context }: { event: any; context: loaderContext }) => {
-  const pool = await context.VenusPool.get(event.srcAddress.toLowerCase());
-  return { pool };
+const venusPoolLoader = async ({
+  event,
+  context,
+}: {
+  event: LoaderEvent;
+  context: loaderContext;
+}) => {
+  latestExchangeRateBlock = event.block.number;
+
+  const [exchangeRate, pool] = await Promise.all([
+    client.readContract({
+      address: event.srcAddress.toLowerCase() as Address,
+      abi: VenusPoolABI,
+      functionName: "exchangeRateStored",
+    }),
+    context.VenusPool.get(event.srcAddress.toLowerCase()),
+  ]);
+  return { pool, exchangeRate };
 };
 
 Venus.Mint.handlerWithLoader({
@@ -19,129 +46,7 @@ Venus.Mint.handlerWithLoader({
 
     context.VenusPool.set({
       ...venusPool,
-      totalSupply: venusPool.totalSupply + event.params.mintTokens,
-      totalCash: venusPool.totalCash + event.params.mintAmount,
-    });
-  },
-});
-
-Venus.Redeem.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      totalSupply: venusPool.totalSupply - event.params.redeemTokens,
-      totalCash: venusPool.totalCash - event.params.redeemAmount,
-    });
-  },
-});
-
-Venus.Borrow.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      totalBorrows: event.params.totalBorrows,
-      totalCash: venusPool.totalCash - event.params.borrowAmount,
-    });
-  },
-});
-
-Venus.RepayBorrow.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      totalBorrows: event.params.totalBorrows,
-      totalCash: venusPool.totalCash + event.params.repayAmount,
-    });
-  },
-});
-
-Venus.AccrueInterest.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      totalBorrows: event.params.totalBorrows,
-      totalCash: venusPool.totalCash + event.params.interestAccumulated,
-    });
-  },
-});
-
-Venus.BadDebtIncreased.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      badDebt: event.params.badDebtNew,
-    });
-  },
-});
-
-Venus.BadDebtRecovered.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      badDebt: event.params.badDebtNew,
-    });
-  },
-});
-
-Venus.ReservesAdded.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      totalReserves: event.params.newTotalReserves,
-    });
-  },
-});
-
-Venus.ReservesReduced.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      totalReserves: event.params.newTotalReserves,
-    });
-  },
-});
-
-Venus.ProtocolSeize.handlerWithLoader({
-  loader: venusPoolLoader,
-  handler: async ({ event, context, loaderReturn }) => {
-    const { pool } = loaderReturn;
-    const venusPool = pool || (await getOrCreateVenusPool(event.srcAddress as Address, context));
-
-    context.VenusPool.set({
-      ...venusPool,
-      totalSupply: venusPool.totalSupply - event.params.amount,
+      exchangeRate: 0n,
     });
   },
 });
@@ -229,17 +134,20 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
   if (pool != undefined) {
     return pool;
   } else {
+    venusInterval.addNewKey(poolAddress.toLowerCase());
+
     const contract = getContract({
       address: poolAddress.toLowerCase() as Address,
       abi: VenusPoolABI,
       client,
     });
 
-    const [name, symbol, underlyingToken] = await client.multicall({
+    const [name, symbol, underlyingToken, exchangeRate] = await client.multicall({
       contracts: [
         { ...contract, functionName: "name" },
         { ...contract, functionName: "symbol" },
         { ...contract, functionName: "underlying" },
+        { ...contract, functionName: "exchangeRateStored" },
       ],
     });
 
@@ -252,11 +160,7 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
       name: name.result as string,
       symbol: symbol.result as string,
       protocol: "Venus",
-      totalCash: 0n,
-      totalBorrows: 0n,
-      totalReserves: 0n,
-      badDebt: 0n,
-      totalSupply: 0n,
+      exchangeRate: exchangeRate.result as bigint,
     };
 
     context.VenusPool.set(newVenusPool);

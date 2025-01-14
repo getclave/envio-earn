@@ -3,7 +3,8 @@ import {
   AccountEarnBalance,
   ERC20_Transfer_event,
   handlerContext,
-  SyncswapMaster,
+  SyncswapFactory,
+  SyncswapFactory_PoolCreated_event,
   SyncswapPool,
 } from "generated";
 import { Address, getContract } from "viem";
@@ -13,16 +14,22 @@ import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { SyncswapPools } from "./ERC20Handler";
 
-SyncswapMaster.RegisterPool.contractRegister(
+SyncswapFactory.PoolCreated.handler(async ({ event, context }) => {
+  await createPool(event, context);
+  SyncswapPools.add(event.params.pool.toLowerCase() as Address);
+});
+
+SyncswapFactory.PoolCreated.contractRegister(
   async ({ event, context }) => {
     context.addSyncswapPool(event.params.pool.toLowerCase() as Address);
-    SyncswapPools.add(event.params.pool.toLowerCase() as Address);
   },
   { preRegisterDynamicContracts: true }
 );
 
 SyncswapPool.Sync.handler(async ({ event, context }) => {
-  const syncPool = await getOrCreatePool(event.srcAddress as Address, context);
+  const syncPool = (await context.SyncswapPool.get(
+    event.srcAddress.toLowerCase() as Address
+  )) as SyncswapPool_t;
 
   context.SyncswapPool.set({
     ...syncPool,
@@ -32,8 +39,9 @@ SyncswapPool.Sync.handler(async ({ event, context }) => {
 });
 
 SyncswapPool.Mint.handler(async ({ event, context }) => {
-  const syncPool = await getOrCreatePool(event.srcAddress as Address, context);
-
+  const syncPool = (await context.SyncswapPool.get(
+    event.srcAddress.toLowerCase() as Address
+  )) as SyncswapPool_t;
   context.SyncswapPool.set({
     ...syncPool,
     totalSupply: syncPool.totalSupply + event.params.liquidity,
@@ -41,7 +49,9 @@ SyncswapPool.Mint.handler(async ({ event, context }) => {
 });
 
 SyncswapPool.Burn.handler(async ({ event, context }) => {
-  const syncPool = await getOrCreatePool(event.srcAddress as Address, context);
+  const syncPool = (await context.SyncswapPool.get(
+    event.srcAddress.toLowerCase() as Address
+  )) as SyncswapPool_t;
 
   context.SyncswapPool.set({
     ...syncPool,
@@ -126,63 +136,50 @@ export const SyncswapAccountHandler = async ({
   }
 };
 
-async function getOrCreatePool(poolAddress: Address, context: handlerContext) {
-  const pool = await context.SyncswapPool.get(poolAddress.toLowerCase());
-  if (!pool) {
-    const contract = getContract({
-      address: poolAddress.toLowerCase() as Address,
-      abi: SyncswapPoolABI,
-      client,
-    });
-    const [
-      name,
-      symbol,
-      underlyingToken,
-      underlyingToken2,
-      poolType,
-      token0Precision,
-      token1Precision,
-    ] = await client.multicall({
+async function createPool(event: SyncswapFactory_PoolCreated_event, context: handlerContext) {
+  const contract = getContract({
+    address: event.params.pool.toLowerCase() as Address,
+    abi: SyncswapPoolABI,
+    client,
+  });
+  const [name, symbol, poolType, token0Precision, token1Precision, totalSupply] =
+    await client.multicall({
       contracts: [
         { ...contract, functionName: "name" },
         { ...contract, functionName: "symbol" },
-        { ...contract, functionName: "token0" },
-        { ...contract, functionName: "token1" },
         { ...contract, functionName: "poolType" },
         { ...contract, functionName: "token0PrecisionMultiplier" },
         { ...contract, functionName: "token1PrecisionMultiplier" },
+        { ...contract, functionName: "totalSupply" },
       ],
     });
-    const [createdToken, createdToken2] = await Promise.all([
-      getOrCreateToken(underlyingToken.result as Address, context),
-      getOrCreateToken(underlyingToken2.result as Address, context),
-    ]);
+  const [createdToken, createdToken2] = await Promise.all([
+    getOrCreateToken(event.params.token0.toLowerCase() as Address, context),
+    getOrCreateToken(event.params.token1.toLowerCase() as Address, context),
+  ]);
 
-    const newSyncswapPool: SyncswapPool_t = {
-      id: poolAddress.toLowerCase(),
-      address: poolAddress.toLowerCase(),
-      underlyingToken_id: createdToken.id,
-      underlyingToken2_id: createdToken2.id,
-      name: name.result as string,
-      symbol: symbol.result as string,
-      poolType: poolType.result as bigint,
-      token0PrecisionMultiplier: (token0Precision.result as bigint) ?? 1n,
-      token1PrecisionMultiplier: (token1Precision.result as bigint) ?? 1n,
-      reserve0: 0n,
-      reserve1: 0n,
-      totalSupply: 0n,
-      protocol: "Syncswap",
-    };
+  const newSyncswapPool: SyncswapPool_t = {
+    id: event.params.pool.toLowerCase(),
+    address: event.params.pool.toLowerCase(),
+    underlyingToken_id: createdToken.id,
+    underlyingToken2_id: createdToken2.id,
+    name: name.result as string,
+    symbol: symbol.result as string,
+    poolType: poolType.result as bigint,
+    token0PrecisionMultiplier: (token0Precision.result as bigint) ?? 1n,
+    token1PrecisionMultiplier: (token1Precision.result as bigint) ?? 1n,
+    reserve0: 0n,
+    reserve1: 0n,
+    totalSupply: totalSupply.result as bigint,
+    protocol: "Syncswap",
+  };
 
-    context.PoolRegistry.set({
-      id: poolAddress.toLowerCase(),
-      protocol: "Syncswap",
-    });
+  context.PoolRegistry.set({
+    id: event.params.pool.toLowerCase(),
+    protocol: "Syncswap",
+  });
 
-    context.SyncswapPool.set(newSyncswapPool);
+  context.SyncswapPool.set(newSyncswapPool);
 
-    return newSyncswapPool;
-  }
-
-  return pool;
+  return newSyncswapPool;
 }

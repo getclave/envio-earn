@@ -61,12 +61,8 @@ type VenusPool {
   name: String
   symbol: String
   underlyingToken: Token @index
-  totalCash: BigInt! # From Mint/Redeem/Borrow/Repay
-  totalBorrows: BigInt! # From Borrow/RepayBorrow
-  totalReserves: BigInt! # From ReservesAdded/ReservesReduced
-  badDebt: BigInt! # From BadDebtIncreased/BadDebtRecovered
-  totalSupply: BigInt! # From Mint/Redeem/Seize
   protocol: Protocol!
+  exchangeRate: BigInt!
 }
 
 type SyncswapPool {

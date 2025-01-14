@@ -43,31 +43,19 @@ ERC20.Transfer.handlerWithLoader({
         receiverAccount: Account;
       };
 
-    try {
-      //? Disabled: await priceFetcher.genOdosTokenPrices(context, event);
-      //? Disabled: await venusShareFetcher.genVenusPoolShares(context, event);
-      //? Disabled: await syncswapShareFetcher.genSyncswapPoolShares(context, event);
-      //? Disabled: await claggShareFetcher.genClaggPoolShares(context, event);
-    } catch (e: any) {
-      context.log.error(e?.message as string);
-    }
-
     if (claveAddresses.size == 0) {
       return;
     }
 
     //* Route to earn handlers from ERC20
 
-    //* if (VenusPoolAddresses.includes(event.srcAddress.toLowerCase())) {
-    //   return await VenusAccountHandler({ event, context, loaderReturn });
-    // }
     if (SyncswapPools.has(event.srcAddress.toLowerCase() as Address)) {
       return await SyncswapAccountHandler({ event, context, loaderReturn });
     }
 
-    if (VenusPoolAddresses.includes(event.srcAddress.toLowerCase() as Address)) {
-      return await VenusAccountHandler({ event, context, loaderReturn });
-    }
+    //! if (VenusPoolAddresses.includes(event.srcAddress.toLowerCase() as Address)) {
+    //   return await VenusAccountHandler({ event, context, loaderReturn });
+    // }
 
     if (senderAccount == null) {
       context.Account.set({

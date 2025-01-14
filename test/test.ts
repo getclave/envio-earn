@@ -1,5 +1,5 @@
 import assert from "assert";
-import { TestHelpers, Account } from "generated";
+import { TestHelpers, AccountIdleBalance } from "generated";
 const { MockDb, ERC20, Addresses } = TestHelpers;
 
 describe("Transfers", () => {
@@ -12,9 +12,11 @@ describe("Transfers", () => {
     const userAddress2 = Addresses.mockAddresses[1];
 
     //Make a mock entity to set the initial state of the mock db
-    const mockAccountEntity: Account = {
+    const mockAccountEntity: AccountIdleBalance = {
       id: userAddress1,
       balance: 5n,
+      address: userAddress1,
+      token_id: "0x0000000000000000000000000000000000000000",
     };
 
     //Set an initial state for the user
@@ -38,25 +40,27 @@ describe("Transfers", () => {
     });
 
     //Get the balance of userAddress1 after the transfer
-    const account1Balance =
-      mockDbAfterTransfer.entities.Account.get(userAddress1)?.balance;
+    const account1Balance = mockDbAfterTransfer.entities.AccountIdleBalance.get(
+      userAddress1 + mockTransfer.srcAddress
+    )?.balance;
 
     //Assert the expected balance
     assert.equal(
       2n,
       account1Balance,
-      "Should have subtracted transfer amount 3 from userAddress1 balance 5",
+      "Should have subtracted transfer amount 3 from userAddress1 balance 5"
     );
 
     //Get the balance of userAddress2 after the transfer
-    const account2Balance =
-      mockDbAfterTransfer.entities.Account.get(userAddress2)?.balance;
+    const account2Balance = mockDbAfterTransfer.entities.AccountIdleBalance.get(
+      userAddress2 + mockTransfer.srcAddress
+    )?.balance;
 
     //Assert the expected balance
     assert.equal(
       3n,
       account2Balance,
-      "Should have added transfer amount 3 to userAddress2 balance 0",
+      "Should have added transfer amount 3 to userAddress2 balance 0"
     );
   });
 });
