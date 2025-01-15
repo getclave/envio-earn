@@ -169,7 +169,10 @@ export const SyncswapAccountHandler = async ({
  * @param context The handler context
  * @returns The newly created pool object
  */
-async function createPool(event: SyncswapFactory_PoolCreated_event, context: handlerContext) {
+export async function createPool(
+  event: SyncswapFactory_PoolCreated_event,
+  context: handlerContext
+) {
   const contract = getContract({
     address: event.params.pool.toLowerCase() as Address,
     abi: SyncswapPoolABI,

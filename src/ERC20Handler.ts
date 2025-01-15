@@ -200,10 +200,7 @@ async function PlainTransferHandler(
  */
 function isVenusTotalSupplyChange(event: ERC20_Transfer_event) {
   return (
-    (VenusPoolAddresses.includes(event.params.from.toLowerCase()) &&
-      event.params.to.toLowerCase() == zeroAddress) ||
-    (VenusPoolAddresses.includes(event.params.to.toLowerCase()) &&
-      event.params.from.toLowerCase() == zeroAddress)
+    event.params.to.toLowerCase() == zeroAddress || event.params.from.toLowerCase() == zeroAddress
   );
 }
 

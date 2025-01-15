@@ -5,7 +5,7 @@
  */
 
 import { ERC20_Transfer_event, handlerContext, Venus } from "generated";
-import { Address, getContract } from "viem";
+import { Address, getContract, zeroAddress } from "viem";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
@@ -111,7 +111,10 @@ export const VenusTotalSupplyHandler = async ({
   const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
   context.VenusPool.set({
     ...venusPool,
-    totalSupply: venusPool.totalSupply + event.params.value,
+    totalSupply:
+      event.params.from === zeroAddress
+        ? venusPool.totalSupply + event.params.value
+        : venusPool.totalSupply - event.params.value,
   });
 };
 
