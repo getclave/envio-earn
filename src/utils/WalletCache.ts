@@ -27,6 +27,10 @@ class WalletCache {
    * Loads initial data and sets up real-time updates
    */
   async initialize() {
+    if (process.env.NODE_ENV === "test") {
+      return;
+    }
+
     // Create two connections - one for subscribing and one for getting data
     const [commandClient, subClient] = await Promise.all([
       getRedisInstance({
