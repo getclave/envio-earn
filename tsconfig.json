@@ -2,12 +2,16 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "lib": ["es2020"],
     "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
     "resolveJsonModule": true,
-    "types": ["vitest/globals", "node"]
+    "isolatedModules": true,
+    "types": ["mocha", "node"],
+    "outDir": "dist"
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules"]

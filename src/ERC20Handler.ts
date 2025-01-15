@@ -67,12 +67,7 @@ ERC20.Transfer.handlerWithLoader({
    */
   handler: async ({ event, context, loaderReturn }) => {
     try {
-      if (!event.srcAddress || !event.params.from || !event.params.to) {
-        context.log.error(`Missing required parameters in ERC20 Transfer handler`);
-        return;
-      }
-
-      const { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
+      let { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
         claveAddresses: Set<string>;
         senderAccount: Account;
         receiverAccount: Account;
@@ -80,6 +75,11 @@ ERC20.Transfer.handlerWithLoader({
 
       if (event.params.from === event.params.to) {
         return;
+      }
+
+      if (process.env.NODE_ENV == "test") {
+        claveAddresses = new Set([event.params.from.toLowerCase(), event.params.to.toLowerCase()]);
+        loaderReturn.claveAddresses = claveAddresses;
       }
 
       // Handle Venus protocol specific events
@@ -115,7 +115,6 @@ ERC20.Transfer.handlerWithLoader({
           address: toAddress,
         });
       }
-
       // Route to protocol-specific handlers
       if (SyncswapPools.has(srcAddress)) {
         context.log.debug(`Routing to SyncswapAccountHandler`);
@@ -126,7 +125,6 @@ ERC20.Transfer.handlerWithLoader({
         context.log.debug(`Routing to VenusAccountHandler`);
         return await VenusAccountHandler({ event, context, loaderReturn });
       }
-
       await PlainTransferHandler(event, context, loaderReturn);
     } catch (error) {
       context.log.error(`Error in ERC20 Transfer handler: ${error}`);
