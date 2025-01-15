@@ -62,7 +62,11 @@ type VenusPool {
   symbol: String
   underlyingToken: Token @index
   protocol: Protocol!
-  exchangeRate: BigInt!
+  totalSupply: BigInt!
+  totalCash: BigInt!
+  totalBorrows: BigInt!
+  badDebt: BigInt!
+  totalReserves: BigInt!
 }
 
 type SyncswapPool {

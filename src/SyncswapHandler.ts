@@ -1,5 +1,10 @@
+/**
+ * SyncswapHandler.ts
+ * Handles events from Syncswap DEX contracts, managing pool creation, liquidity changes,
+ * and user balances for the Clave indexer.
+ */
+
 import {
-  Account,
   AccountEarnBalance,
   ERC20_Transfer_event,
   handlerContext,
@@ -14,11 +19,18 @@ import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { SyncswapPools } from "./ERC20Handler";
 
+/**
+ * Handles new pool creation events from the Syncswap Factory
+ * Creates and stores pool data including token pairs and initial state
+ */
 SyncswapFactory.PoolCreated.handler(async ({ event, context }) => {
   await createPool(event, context);
   SyncswapPools.add(event.params.pool.toLowerCase() as Address);
 });
 
+/**
+ * Registers new Syncswap pools for dynamic contract tracking
+ */
 SyncswapFactory.PoolCreated.contractRegister(
   async ({ event, context }) => {
     context.addSyncswapPool(event.params.pool.toLowerCase() as Address);
@@ -26,6 +38,10 @@ SyncswapFactory.PoolCreated.contractRegister(
   { preRegisterDynamicContracts: true }
 );
 
+/**
+ * Updates pool reserves when sync events occur
+ * Tracks the current state of liquidity in the pool
+ */
 SyncswapPool.Sync.handler(async ({ event, context }) => {
   const syncPool = (await context.SyncswapPool.get(
     event.srcAddress.toLowerCase() as Address
@@ -38,6 +54,10 @@ SyncswapPool.Sync.handler(async ({ event, context }) => {
   });
 });
 
+/**
+ * Handles liquidity addition events
+ * Updates pool's total supply when new liquidity is added
+ */
 SyncswapPool.Mint.handler(async ({ event, context }) => {
   const syncPool = (await context.SyncswapPool.get(
     event.srcAddress.toLowerCase() as Address
@@ -48,6 +68,10 @@ SyncswapPool.Mint.handler(async ({ event, context }) => {
   });
 });
 
+/**
+ * Handles liquidity removal events
+ * Updates pool's total supply when liquidity is removed
+ */
 SyncswapPool.Burn.handler(async ({ event, context }) => {
   const syncPool = (await context.SyncswapPool.get(
     event.srcAddress.toLowerCase() as Address
@@ -59,6 +83,13 @@ SyncswapPool.Burn.handler(async ({ event, context }) => {
   });
 });
 
+/**
+ * Handles LP token transfers for Syncswap pools
+ * Updates user account balances when LP tokens are transferred
+ * @param event The transfer event details
+ * @param context The handler context for database operations
+ * @param loaderReturn Contains pre-loaded data including Clave addresses
+ */
 export const SyncswapAccountHandler = async ({
   event,
   context,
@@ -68,33 +99,9 @@ export const SyncswapAccountHandler = async ({
   context: handlerContext;
   loaderReturn: any;
 }) => {
-  const { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
+  const { claveAddresses } = loaderReturn as {
     claveAddresses: Set<string>;
-    senderAccount: Account;
-    receiverAccount: Account;
   };
-
-  if (claveAddresses.size == 0) {
-    return;
-  }
-
-  if (senderAccount == null) {
-    context.Account.set({
-      id: event.params.from.toLowerCase(),
-      address: event.params.from.toLowerCase(),
-    });
-  }
-
-  if (receiverAccount == null) {
-    context.Account.set({
-      id: event.params.to.toLowerCase(),
-      address: event.params.to.toLowerCase(),
-    });
-  }
-
-  if (event.params.from === event.params.to) {
-    return;
-  }
 
   const senderAccountBalance = await context.AccountEarnBalance.get(
     event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
@@ -104,7 +111,7 @@ export const SyncswapAccountHandler = async ({
   );
 
   if (claveAddresses.has(event.params.from.toLowerCase())) {
-    // create the account
+    // Update sender's account balance
     let accountObject: AccountEarnBalance = {
       id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
@@ -120,7 +127,7 @@ export const SyncswapAccountHandler = async ({
   }
 
   if (claveAddresses.has(event.params.to.toLowerCase())) {
-    // create new account
+    // Update receiver's account balance
     let accountObject: AccountEarnBalance = {
       id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
@@ -136,6 +143,13 @@ export const SyncswapAccountHandler = async ({
   }
 };
 
+/**
+ * Creates a new Syncswap pool entry in the database
+ * Fetches pool details including name, symbol, and precision multipliers
+ * @param event The pool creation event
+ * @param context The handler context
+ * @returns The newly created pool object
+ */
 async function createPool(event: SyncswapFactory_PoolCreated_event, context: handlerContext) {
   const contract = getContract({
     address: event.params.pool.toLowerCase() as Address,

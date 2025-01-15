@@ -3,7 +3,7 @@ name: clave-indexer
 description: Clave Indexer
 networks:
   - id: 324
-    start_block: 9767
+    start_block: 43552171
     contracts:
       - name: ERC20 # Both for ERC20Transfer and Venus
         handler: src/ERC20Handler.ts
@@ -42,27 +42,25 @@ networks:
       #     - event: "AdapterAdded(address indexed adapter)"
       #     - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
       #     - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
-      #! - name: Venus
-      #   handler: src/VenusHandler.ts
-      #   address:
-      #     - 0x84064c058f2efea4ab648bb6bd7e40f83ffde39a
-      #     - 0x1af23bd57c62a99c59ad48236553d0dd11e49d2d
-      #     - 0x69cda960e3b20dfd480866fffd377ebe40bd0a46
-      #     - 0xaf8fd83cfcbe963211faaf1847f0f217f80b4719
-      #     - 0x1fa916c27c7c2c4602124a14c77dbb40a5ff1be8
-      #     - 0x697a70779c1a03ba2bd28b7627a902bff831b616
-      #   events:
-      #     - event: "Mint(address indexed minter, uint256 mintAmount, uint256 mintTokens, uint256 accountBalance)"
-      #     - event: "Redeem(address indexed redeemer, uint256 redeemAmount, uint256 redeemTokens, uint256 accountBalance)"
-      #     - event: "Borrow(address indexed borrower, uint256 borrowAmount, uint256 accountBorrows, uint256 totalBorrows)"
-      #     - event: "RepayBorrow(address indexed payer, address indexed borrower, uint256 repayAmount, uint256 accountBorrows, uint256 totalBorrows)"
-      #     - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
-      #     - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
-      #     - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
-      #     - event: "ReservesAdded(address indexed benefactor, uint256 addAmount, uint256 newTotalReserves)"
-      #     - event: "ReservesReduced(address indexed protocolShareReserve, uint256 reduceAmount, uint256 newTotalReserves)"
-      #     - event: "ProtocolSeize(address indexed from, address indexed to, uint256 amount)"
+      - name: Venus
+        handler: src/VenusHandler.ts
+        address:
+          - 0x84064c058f2efea4ab648bb6bd7e40f83ffde39a
+          - 0x1af23bd57c62a99c59ad48236553d0dd11e49d2d
+          - 0x69cda960e3b20dfd480866fffd377ebe40bd0a46
+          - 0xaf8fd83cfcbe963211faaf1847f0f217f80b4719
+          - 0x1fa916c27c7c2c4602124a14c77dbb40a5ff1be8
+          - 0x697a70779c1a03ba2bd28b7627a902bff831b616
+        events:
+          - event: "Borrow(address indexed borrower, uint256 borrowAmount, uint256 accountBorrows, uint256 totalBorrows)"
+          - event: "RepayBorrow(address indexed payer, address indexed borrower, uint256 repayAmount, uint256 accountBorrows, uint256 totalBorrows)"
+          - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
+          - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
+          - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
+          - event: "ReservesAdded(address indexed benefactor, uint256 addAmount, uint256 newTotalReserves)"
+          - event: "SpreadReservesReduced(address indexed protocolShareReserve, uint256 reduceAmount, uint256 newTotalReserves)"
 rollback_on_reorg: false
 #* 9767 syncswap first block
-#* 42301361 venus first block
+#* 43552171 venus first block
 #* 24805087 clave first block
+
