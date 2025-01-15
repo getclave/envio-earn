@@ -99,47 +99,66 @@ export const SyncswapAccountHandler = async ({
   context: handlerContext;
   loaderReturn: any;
 }) => {
-  const { claveAddresses } = loaderReturn as {
-    claveAddresses: Set<string>;
-  };
+  try {
+    if (!event.srcAddress || !event.params.from || !event.params.to) {
+      context.log.error(`Missing required parameters in SyncswapAccountHandler`);
+      return;
+    }
 
-  const senderAccountBalance = await context.AccountEarnBalance.get(
-    event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
-  );
-  const receiverAccountBalance = await context.AccountEarnBalance.get(
-    event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
-  );
-
-  if (claveAddresses.has(event.params.from.toLowerCase())) {
-    // Update sender's account balance
-    let accountObject: AccountEarnBalance = {
-      id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
-      shareBalance:
-        senderAccountBalance == undefined
-          ? 0n - event.params.value
-          : senderAccountBalance.shareBalance - event.params.value,
-      userAddress: event.params.from.toLowerCase(),
-      poolAddress: event.srcAddress.toLowerCase(),
-      protocol: "Syncswap",
+    const { claveAddresses } = loaderReturn as {
+      claveAddresses: Set<string>;
     };
 
-    context.AccountEarnBalance.set(accountObject);
-  }
+    if (!claveAddresses) {
+      context.log.error(`Missing claveAddresses in loaderReturn`);
+      return;
+    }
 
-  if (claveAddresses.has(event.params.to.toLowerCase())) {
-    // Update receiver's account balance
-    let accountObject: AccountEarnBalance = {
-      id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
-      shareBalance:
-        receiverAccountBalance == undefined
-          ? event.params.value
-          : event.params.value + receiverAccountBalance.shareBalance,
-      userAddress: event.params.to.toLowerCase(),
-      poolAddress: event.srcAddress.toLowerCase(),
-      protocol: "Syncswap",
-    };
+    const fromAddress = event.params.from.toLowerCase();
+    const toAddress = event.params.to.toLowerCase();
+    const poolAddress = event.srcAddress.toLowerCase();
 
-    context.AccountEarnBalance.set(accountObject);
+    const [senderAccountBalance, receiverAccountBalance] = await Promise.all([
+      context.AccountEarnBalance.get(fromAddress + poolAddress),
+      context.AccountEarnBalance.get(toAddress + poolAddress),
+    ]);
+
+    if (claveAddresses.has(fromAddress)) {
+      // Update sender's account balance
+      let accountObject: AccountEarnBalance = {
+        id: fromAddress + poolAddress,
+        shareBalance:
+          senderAccountBalance == undefined
+            ? 0n - event.params.value
+            : senderAccountBalance.shareBalance - event.params.value,
+        userAddress: fromAddress,
+        poolAddress: poolAddress,
+        protocol: "Syncswap",
+      };
+
+      context.AccountEarnBalance.set(accountObject);
+      context.log.debug(`Updated sender balance in Syncswap pool`);
+    }
+
+    if (claveAddresses.has(toAddress)) {
+      // Update receiver's account balance
+      let accountObject: AccountEarnBalance = {
+        id: toAddress + poolAddress,
+        shareBalance:
+          receiverAccountBalance == undefined
+            ? event.params.value
+            : event.params.value + receiverAccountBalance.shareBalance,
+        userAddress: toAddress,
+        poolAddress: poolAddress,
+        protocol: "Syncswap",
+      };
+
+      context.AccountEarnBalance.set(accountObject);
+      context.log.debug(`Updated receiver balance in Syncswap pool`);
+    }
+  } catch (error) {
+    context.log.error(`Error in SyncswapAccountHandler: ${error}`);
+    throw error;
   }
 };
 

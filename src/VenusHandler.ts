@@ -128,17 +128,41 @@ export const VenusTotalCashHandler = async ({
   event: ERC20_Transfer_event;
   context: handlerContext;
 }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  if (event.params.from.toLowerCase() == venusPool.address) {
-    context.VenusPool.set({
-      ...venusPool,
-      totalCash: venusPool.totalCash + event.params.value,
-    });
-  } else if (event.params.to.toLowerCase() == venusPool.address) {
-    context.VenusPool.set({
-      ...venusPool,
-      totalCash: venusPool.totalCash - event.params.value,
-    });
+  try {
+    if (!event.srcAddress || !event.params.from || !event.params.to) {
+      context.log.error(`Missing required parameters in VenusTotalCashHandler`);
+      return;
+    }
+
+    const venusPool = await getOrCreateVenusPool(
+      event.srcAddress.toLowerCase() as Address,
+      context
+    );
+    if (!venusPool || !venusPool.address) {
+      context.log.error(`Failed to get or create Venus pool`);
+      return;
+    }
+
+    const fromAddress = event.params.from.toLowerCase();
+    const toAddress = event.params.to.toLowerCase();
+    const poolAddress = venusPool.address.toLowerCase();
+
+    if (fromAddress === poolAddress) {
+      context.log.debug(`Updating total cash for outgoing transfer`);
+      context.VenusPool.set({
+        ...venusPool,
+        totalCash: venusPool.totalCash + event.params.value,
+      });
+    } else if (toAddress === poolAddress) {
+      context.log.debug(`Updating total cash for incoming transfer`);
+      context.VenusPool.set({
+        ...venusPool,
+        totalCash: venusPool.totalCash - event.params.value,
+      });
+    }
+  } catch (error) {
+    context.log.error(`Error in VenusTotalCashHandler: ${error}`);
+    throw error;
   }
 };
 

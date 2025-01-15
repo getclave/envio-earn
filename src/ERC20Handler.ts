@@ -66,57 +66,72 @@ ERC20.Transfer.handlerWithLoader({
    * Routes transfers to appropriate protocol handlers and manages account balances
    */
   handler: async ({ event, context, loaderReturn }) => {
-    const { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
-      claveAddresses: Set<string>;
-      senderAccount: Account;
-      receiverAccount: Account;
-    };
+    try {
+      if (!event.srcAddress || !event.params.from || !event.params.to) {
+        context.log.error(`Missing required parameters in ERC20 Transfer handler`);
+        return;
+      }
 
-    if (event.params.from === event.params.to) {
-      return;
+      const { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
+        claveAddresses: Set<string>;
+        senderAccount: Account;
+        receiverAccount: Account;
+      };
+
+      if (event.params.from === event.params.to) {
+        return;
+      }
+
+      // Handle Venus protocol specific events
+      if (isVenusTotalSupplyChange(event)) {
+        context.log.debug(`VenusTotalSupplyChange`);
+        return await VenusTotalSupplyHandler({ event, context });
+      }
+
+      if (isVenusTotalCashChange(event)) {
+        context.log.debug(`VenusTotalCashChange`);
+        await VenusTotalCashHandler({ event, context });
+      }
+
+      if (!claveAddresses || claveAddresses.size === 0) {
+        return;
+      }
+
+      const fromAddress = event.params.from.toLowerCase();
+      const toAddress = event.params.to.toLowerCase();
+      const srcAddress = event.srcAddress.toLowerCase() as Address;
+
+      // Create accounts for new Clave users
+      if (!senderAccount && claveAddresses.has(fromAddress)) {
+        context.Account.set({
+          id: fromAddress,
+          address: fromAddress,
+        });
+      }
+
+      if (!receiverAccount && claveAddresses.has(toAddress)) {
+        context.Account.set({
+          id: toAddress,
+          address: toAddress,
+        });
+      }
+
+      // Route to protocol-specific handlers
+      if (SyncswapPools.has(srcAddress)) {
+        context.log.debug(`Routing to SyncswapAccountHandler`);
+        return await SyncswapAccountHandler({ event, context, loaderReturn });
+      }
+
+      if (VenusPoolAddresses.includes(srcAddress)) {
+        context.log.debug(`Routing to VenusAccountHandler`);
+        return await VenusAccountHandler({ event, context, loaderReturn });
+      }
+
+      await PlainTransferHandler(event, context, loaderReturn);
+    } catch (error) {
+      context.log.error(`Error in ERC20 Transfer handler: ${error}`);
+      throw error;
     }
-
-    // Handle Venus protocol specific events
-    if (isVenusTotalSupplyChange(event)) {
-      context.log.debug("VenusTotalSupplyChange");
-      return await VenusTotalSupplyHandler({ event, context });
-    }
-
-    if (isVenusTotalCashChange(event)) {
-      context.log.debug("VenusTotalCashChange");
-      await VenusTotalCashHandler({ event, context });
-    }
-
-    if (claveAddresses.size == 0) {
-      return;
-    }
-
-    // Create accounts for new Clave users
-    if (senderAccount == null && claveAddresses.has(event.params.from.toLowerCase())) {
-      context.Account.set({
-        id: event.params.from.toLowerCase(),
-        address: event.params.from.toLowerCase(),
-      });
-    }
-
-    if (receiverAccount == null && claveAddresses.has(event.params.to.toLowerCase())) {
-      context.Account.set({
-        id: event.params.to.toLowerCase(),
-        address: event.params.to.toLowerCase(),
-      });
-    }
-
-    // Route to protocol-specific handlers
-    if (SyncswapPools.has(event.srcAddress.toLowerCase() as Address)) {
-      return await SyncswapAccountHandler({ event, context, loaderReturn });
-    }
-
-    if (VenusPoolAddresses.includes(event.srcAddress.toLowerCase() as Address)) {
-      context.log.debug("VenusAccountHandler");
-      return await VenusAccountHandler({ event, context, loaderReturn });
-    }
-
-    await PlainTransferHandler(event, context, loaderReturn);
   },
 
   wildcard: true,
