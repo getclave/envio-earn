@@ -78,10 +78,12 @@ ERC20.Transfer.handlerWithLoader({
 
     // Handle Venus protocol specific events
     if (isVenusTotalSupplyChange(event)) {
+      context.log.debug("VenusTotalSupplyChange");
       return await VenusTotalSupplyHandler({ event, context });
     }
 
     if (isVenusTotalCashChange(event)) {
+      context.log.debug("VenusTotalCashChange");
       await VenusTotalCashHandler({ event, context });
     }
 
@@ -110,6 +112,7 @@ ERC20.Transfer.handlerWithLoader({
     }
 
     if (VenusPoolAddresses.includes(event.srcAddress.toLowerCase() as Address)) {
+      context.log.debug("VenusAccountHandler");
       return await VenusAccountHandler({ event, context, loaderReturn });
     }
 
