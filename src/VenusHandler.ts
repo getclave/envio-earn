@@ -10,6 +10,7 @@ import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { AccountEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
+import { VenusPoolAddresses } from "./constants/VenusPools";
 
 /**
  * Handles repayment of borrowed assets
@@ -132,17 +133,14 @@ export const VenusTotalCashHandler = async ({
   context: handlerContext;
 }) => {
   try {
-    if (!event.srcAddress || !event.params.from || !event.params.to) {
-      context.log.error(`Missing required parameters in VenusTotalCashHandler`);
-      return;
-    }
-
     const venusPool = await getOrCreateVenusPool(
-      event.srcAddress.toLowerCase() as Address,
+      VenusPoolAddresses.includes(event.params.from.toLowerCase())
+        ? (event.params.from.toLowerCase() as Address)
+        : (event.params.to.toLowerCase() as Address),
       context
     );
-    if (!venusPool || !venusPool.address) {
-      context.log.error(`Failed to get or create Venus pool`);
+
+    if (venusPool.underlyingToken_id != event.srcAddress.toLowerCase()) {
       return;
     }
 
@@ -154,13 +152,13 @@ export const VenusTotalCashHandler = async ({
       context.log.debug(`Updating total cash for outgoing transfer`);
       context.VenusPool.set({
         ...venusPool,
-        totalCash: venusPool.totalCash + event.params.value,
+        totalCash: venusPool.totalCash - event.params.value,
       });
     } else if (toAddress === poolAddress) {
       context.log.debug(`Updating total cash for incoming transfer`);
       context.VenusPool.set({
         ...venusPool,
-        totalCash: venusPool.totalCash - event.params.value,
+        totalCash: venusPool.totalCash + event.params.value,
       });
     }
   } catch (error) {
@@ -238,6 +236,7 @@ export const VenusAccountHandler = async ({
  */
 async function getOrCreateVenusPool(poolAddress: Address, context: handlerContext) {
   const pool = await context.VenusPool.get(poolAddress.toLowerCase());
+
   if (pool != undefined) {
     return pool;
   } else {

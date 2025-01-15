@@ -84,8 +84,7 @@ ERC20.Transfer.handlerWithLoader({
 
       // Handle Venus protocol specific events
       if (isVenusTotalSupplyChange(event)) {
-        context.log.debug(`VenusTotalSupplyChange`);
-        return await VenusTotalSupplyHandler({ event, context });
+        await VenusTotalSupplyHandler({ event, context });
       }
 
       if (isVenusTotalCashChange(event)) {
@@ -198,7 +197,9 @@ async function PlainTransferHandler(
  */
 function isVenusTotalSupplyChange(event: ERC20_Transfer_event) {
   return (
-    event.params.to.toLowerCase() == zeroAddress || event.params.from.toLowerCase() == zeroAddress
+    (event.params.to.toLowerCase() == zeroAddress ||
+      event.params.from.toLowerCase() == zeroAddress) &&
+    VenusPoolAddresses.includes(event.srcAddress.toLowerCase())
   );
 }
 
