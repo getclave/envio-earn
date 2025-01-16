@@ -57,8 +57,6 @@ networks:
           - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
           - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
           - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
-          - event: "ReservesAdded(address indexed benefactor, uint256 addAmount, uint256 newTotalReserves)"
-          - event: "SpreadReservesReduced(address indexed protocolShareReserve, uint256 reduceAmount, uint256 newTotalReserves)"
 rollback_on_reorg: false
 #* 9767 syncswap first block
 #* 43552171 venus first block

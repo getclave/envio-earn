@@ -62,11 +62,8 @@ type VenusPool {
   symbol: String
   underlyingToken: Token @index
   protocol: Protocol!
-  totalSupply: BigInt!
-  totalCash: BigInt!
-  totalBorrows: BigInt!
-  badDebt: BigInt!
-  totalReserves: BigInt!
+  exchangeRate: BigInt!
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "id")
 }
 
 type SyncswapPool {
@@ -83,6 +80,7 @@ type SyncswapPool {
   reserve1: BigInt!
   totalSupply: BigInt!
   protocol: Protocol!
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "id")
 }
 
 type ClaggPool {

@@ -16,11 +16,7 @@ import { walletCache } from "./utils/WalletCache";
 import { SyncswapAccountHandler } from "./SyncswapHandler";
 import { Address, zeroAddress } from "viem";
 import { VenusPoolAddresses } from "./constants/VenusPools";
-import {
-  VenusAccountHandler,
-  VenusTotalCashHandler,
-  VenusTotalSupplyHandler,
-} from "./VenusHandler";
+import { VenusAccountHandler } from "./VenusHandler";
 
 /**
  * Set of Syncswap pool addresses for quick lookup
@@ -80,16 +76,6 @@ ERC20.Transfer.handlerWithLoader({
       if (process.env.NODE_ENV == "test") {
         claveAddresses = new Set([event.params.from.toLowerCase(), event.params.to.toLowerCase()]);
         loaderReturn.claveAddresses = claveAddresses;
-      }
-
-      // Handle Venus protocol specific events
-      if (isVenusTotalSupplyChange(event)) {
-        await VenusTotalSupplyHandler({ event, context });
-      }
-
-      if (isVenusTotalCashChange(event)) {
-        context.log.debug(`VenusTotalCashChange`);
-        await VenusTotalCashHandler({ event, context });
       }
 
       if (!claveAddresses || claveAddresses.size === 0) {

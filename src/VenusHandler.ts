@@ -5,167 +5,42 @@
  */
 
 import { ERC20_Transfer_event, handlerContext, Venus } from "generated";
-import { Address, getContract, zeroAddress } from "viem";
+import { Address, getContract } from "viem";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { AccountEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
-import { VenusPoolAddresses } from "./constants/VenusPools";
+import { venusExchangeRateInterval } from "./utils/intervals";
 
-/**
- * Handles repayment of borrowed assets
- * Updates the pool's total borrows when users repay their debt
- */
-Venus.RepayBorrow.handler(async ({ event, context }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    totalBorrows: event.params.totalBorrows,
-  });
-});
-
-/**
- * Handles new borrowing events
- * Updates the pool's total borrows when users borrow assets
- */
-Venus.Borrow.handler(async ({ event, context }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    totalBorrows: event.params.totalBorrows,
-  });
-});
-
-/**
- * Handles interest accrual events
- * Updates the pool's total borrows when interest is accrued
- */
-Venus.AccrueInterest.handler(async ({ event, context }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    totalBorrows: event.params.totalBorrows,
-  });
-});
-
-/**
- * Handles bad debt increase events
- * Updates the pool's bad debt tracking when borrower defaults
- */
-Venus.BadDebtIncreased.handler(async ({ event, context }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    badDebt: event.params.badDebtNew,
-  });
-});
-
-/**
- * Handles bad debt recovery events
- * Updates the pool's bad debt tracking when debt is recovered
- */
-Venus.BadDebtRecovered.handler(async ({ event, context }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    badDebt: event.params.badDebtNew,
-  });
-});
-
-/**
- * Handles reduction in spread reserves
- * Updates the pool's total reserves when spread reserves are reduced
- */
-Venus.SpreadReservesReduced.handler(async ({ event, context }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    totalReserves: event.params.newTotalReserves,
-  });
-});
-
-/**
- * Handles addition to reserves
- * Updates the pool's total reserves when new reserves are added
- */
-Venus.ReservesAdded.handler(async ({ event, context }) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    totalReserves: event.params.newTotalReserves,
-  });
-});
-
-/**
- * Handles changes in Venus pool's total supply
- * Updates the pool's total supply tracking for mints and burns
- * @param event The transfer event details
- * @param context The handler context
- */
-export const VenusTotalSupplyHandler = async ({
-  event,
-  context,
-}: {
-  event: ERC20_Transfer_event;
-  context: handlerContext;
-}) => {
-  const venusPool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-  context.VenusPool.set({
-    ...venusPool,
-    totalSupply:
-      event.params.from === zeroAddress
-        ? venusPool.totalSupply + event.params.value
-        : venusPool.totalSupply - event.params.value,
-  });
-};
-
-/**
- * Handles changes in Venus pool's total cash
- * Updates the pool's total cash when assets flow in or out
- * @param event The transfer event details
- * @param context The handler context
- */
-export const VenusTotalCashHandler = async ({
-  event,
-  context,
-}: {
-  event: ERC20_Transfer_event;
-  context: handlerContext;
-}) => {
-  try {
-    const venusPool = await getOrCreateVenusPool(
-      VenusPoolAddresses.includes(event.params.from.toLowerCase())
-        ? (event.params.from.toLowerCase() as Address)
-        : (event.params.to.toLowerCase() as Address),
-      context
-    );
-
-    if (venusPool.underlyingToken_id != event.srcAddress.toLowerCase()) {
-      return;
-    }
-
-    const fromAddress = event.params.from.toLowerCase();
-    const toAddress = event.params.to.toLowerCase();
-    const poolAddress = venusPool.address.toLowerCase();
-
-    if (fromAddress === poolAddress) {
-      context.log.debug(`Updating total cash for outgoing transfer`);
-      context.VenusPool.set({
-        ...venusPool,
-        totalCash: venusPool.totalCash - event.params.value,
-      });
-    } else if (toAddress === poolAddress) {
-      context.log.debug(`Updating total cash for incoming transfer`);
-      context.VenusPool.set({
-        ...venusPool,
-        totalCash: venusPool.totalCash + event.params.value,
-      });
-    }
-  } catch (error) {
-    context.log.error(`Error in VenusTotalCashHandler: ${error}`);
-    throw error;
+Venus.AccrueInterest.handler(async ({ context, event }) => {
+  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
+    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
   }
-};
+});
+
+Venus.Borrow.handler(async ({ context, event }) => {
+  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
+    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+  }
+});
+
+Venus.RepayBorrow.handler(async ({ context, event }) => {
+  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
+    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+  }
+});
+
+Venus.BadDebtIncreased.handler(async ({ context, event }) => {
+  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
+    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+  }
+});
+
+Venus.BadDebtRecovered.handler(async ({ context, event }) => {
+  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
+    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+  }
+});
 
 /**
  * Handles Venus token transfers for tracked accounts
@@ -187,6 +62,8 @@ export const VenusAccountHandler = async ({
     claveAddresses: Set<string>;
   };
 
+  const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
+
   const senderAccountBalance = await context.AccountEarnBalance.get(
     event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
   );
@@ -204,7 +81,7 @@ export const VenusAccountHandler = async ({
           : senderAccountBalance.shareBalance - event.params.value,
       userAddress: event.params.from.toLowerCase(),
       protocol: "Venus",
-      poolAddress: event.srcAddress.toLowerCase(),
+      poolAddress: pool.id,
     };
 
     context.AccountEarnBalance.set(accountObject);
@@ -220,7 +97,7 @@ export const VenusAccountHandler = async ({
           : event.params.value + receiverAccountBalance.shareBalance,
       userAddress: event.params.to.toLowerCase(),
       protocol: "Venus",
-      poolAddress: event.srcAddress.toLowerCase(),
+      poolAddress: pool.id,
     };
 
     context.AccountEarnBalance.set(accountObject);
@@ -246,11 +123,12 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
       client,
     });
 
-    const [name, symbol, underlyingToken] = await client.multicall({
+    const [name, symbol, underlyingToken, exchangeRate] = await client.multicall({
       contracts: [
         { ...contract, functionName: "name" },
         { ...contract, functionName: "symbol" },
         { ...contract, functionName: "underlying" },
+        { ...contract, functionName: "exchangeRateStored" },
       ],
     });
 
@@ -263,19 +141,34 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
       name: name.result as string,
       symbol: symbol.result as string,
       protocol: "Venus",
-      totalSupply: 0n,
-      totalCash: 0n,
-      totalBorrows: 0n,
-      badDebt: 0n,
-      totalReserves: 0n,
+      exchangeRate: exchangeRate.result as bigint,
     };
 
-    context.VenusPool.set(newVenusPool);
     context.PoolRegistry.set({
       id: poolAddress.toLowerCase(),
       protocol: "Venus",
     });
+    context.VenusPool.set(newVenusPool);
 
     return newVenusPool;
   }
+}
+
+async function setNewExchangeRate(poolAddress: Address, context: handlerContext) {
+  const contract = getContract({
+    address: poolAddress.toLowerCase() as Address,
+    abi: VenusPoolABI,
+    client,
+  });
+
+  const [exchangeRate] = await client.multicall({
+    contracts: [{ ...contract, functionName: "exchangeRateStored" }],
+  });
+
+  const pool = await getOrCreateVenusPool(poolAddress, context);
+
+  context.VenusPool.set({
+    ...pool,
+    exchangeRate: exchangeRate.result as bigint,
+  });
 }

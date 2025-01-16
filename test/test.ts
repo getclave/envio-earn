@@ -1,8 +1,8 @@
 import assert from "assert";
-import { TestHelpers, AccountIdleBalance, Account, VenusPool } from "generated";
+import { TestHelpers, AccountIdleBalance } from "generated";
 import { zeroAddress } from "viem";
 import { VenusPoolAddresses } from "../src/constants/VenusPools";
-const { MockDb, ERC20, Addresses } = TestHelpers;
+const { MockDb, ERC20, Addresses, Venus } = TestHelpers;
 
 process.env.NODE_ENV = "test";
 
@@ -107,114 +107,64 @@ describe("ERC20Handler", () => {
     assert.equal(5n, account1Balance, "Balance should remain unchanged");
   });
 
-  it("Venus Total Supply Change", async () => {
-    userAddress2 = zeroAddress;
-
-    const mockTransfer = ERC20.Transfer.createMockEvent({
-      from: userAddress1,
-      to: userAddress2,
-      value: 3n,
-      mockEventData: {
-        srcAddress: "0x697a70779c1a03BA2bd28b7627a902bff831b616",
-      },
-    });
-
-    const mockVenusPoolEntity: VenusPool = {
-      id: mockTransfer.srcAddress.toLowerCase(),
-      totalSupply: 100n,
-      totalCash: 100n,
-      totalBorrows: 0n,
-      totalReserves: 0n,
-      address: mockTransfer.srcAddress.toLowerCase(),
-      badDebt: 0n,
-      name: "Venus",
-      protocol: "Venus",
-      symbol: "VENUS",
-      underlyingToken_id: "0x0000000000000000000000B4s00000000Ac000001",
-    };
-
-    const mockDb = mockDbEmpty.entities.VenusPool.set(mockVenusPoolEntity);
-
-    const mockDbAfterTransfer = await ERC20.Transfer.processEvent({
-      event: mockTransfer,
-      mockDb,
-    });
-
-    const venusPool = mockDbAfterTransfer.entities.VenusPool.get(
-      mockTransfer.srcAddress.toLowerCase()
-    );
-    assert.equal(venusPool?.totalSupply, 97n, "Total supply should be 97");
-
-    const reverseMockTransfer = ERC20.Transfer.createMockEvent({
-      from: userAddress2,
+  it("Venus minting new tokens", async () => {
+    const mockMint = ERC20.Transfer.createMockEvent({
+      from: zeroAddress,
       to: userAddress1,
       value: 3n,
       mockEventData: {
-        srcAddress: mockTransfer.srcAddress,
+        srcAddress: VenusPoolAddresses[0],
       },
     });
 
-    const mockDbAfterReverseTransfer = await ERC20.Transfer.processEvent({
-      event: reverseMockTransfer,
-      mockDb: mockDbAfterTransfer,
+    const mockDbAfterMint = await ERC20.Transfer.processEvent({
+      event: mockMint,
+      mockDb,
     });
 
-    assert.equal(
-      mockDbAfterReverseTransfer.entities.VenusPool.get(mockTransfer.srcAddress.toLowerCase())
-        ?.totalSupply,
-      100n,
-      "Total supply should be 100 again"
+    const pool = mockDbAfterMint.entities.VenusPool.get(VenusPoolAddresses[0]);
+    assert.notEqual(pool?.exchangeRate, 0n, "Exchange rate should be set");
+
+    const account1Balance = mockDbAfterMint.entities.AccountEarnBalance.get(
+      userAddress1.toLowerCase() + VenusPoolAddresses[0].toLowerCase()
     );
+    assert.equal(account1Balance?.shareBalance, 3n, "Account earn balance should be set");
   });
 
-  it("Venus Total Cash Change", async () => {
-    userAddress2 = VenusPoolAddresses[0];
-
-    const mockTransfer = ERC20.Transfer.createMockEvent({
-      from: userAddress1,
-      to: userAddress2,
-      value: 3n,
+  it("Venus should fetch exchange rate in interval", async () => {
+    const mockDb = MockDb.createMockDb();
+    const mockTx = Venus.AccrueInterest.createMockEvent({
       mockEventData: {
-        srcAddress: "0x1d17CBcF0D6D143135aE902365D2E5e2A16538D4",
+        srcAddress: VenusPoolAddresses[0],
+        block: {
+          number: 1000,
+        },
       },
     });
 
-    const mockDbAfterTransfer = await ERC20.Transfer.processEvent({
-      event: mockTransfer,
+    const mockDbAfterTx = await Venus.AccrueInterest.processEvent({
+      event: mockTx,
       mockDb,
     });
 
-    const venusPool = mockDbAfterTransfer.entities.VenusPool.get(userAddress2.toLowerCase());
-    assert.equal(venusPool?.totalCash, 3n, "Total cash should be 3");
+    const pool = mockDbAfterTx.entities.VenusPool.get(VenusPoolAddresses[0]);
+    assert.notEqual(pool?.exchangeRate, 0n, "Exchange rate should be set");
 
-    const accountIdleBalance = mockDbAfterTransfer.entities.AccountIdleBalance.get(
-      userAddress1.toLowerCase() + mockTransfer.srcAddress.toLowerCase()
-    );
-    assert.equal(accountIdleBalance?.balance, -3n, "Account earn balance should be -3");
-
-    const reverseMockTransfer = ERC20.Transfer.createMockEvent({
-      from: userAddress2,
-      to: userAddress1,
-      value: 3n,
+    const mockTx2 = Venus.AccrueInterest.createMockEvent({
       mockEventData: {
-        srcAddress: mockTransfer.srcAddress,
+        srcAddress: VenusPoolAddresses[0],
+        block: {
+          number: 1001,
+        },
       },
     });
 
-    const mockDbAfterReverseTransfer = await ERC20.Transfer.processEvent({
-      event: reverseMockTransfer,
-      mockDb: mockDbAfterTransfer,
+    const mockDbAfterTx2 = await Venus.AccrueInterest.processEvent({
+      event: mockTx2,
+      mockDb: mockDbAfterTx,
     });
 
-    const venusPool2 = mockDbAfterReverseTransfer.entities.VenusPool.get(
-      userAddress2.toLowerCase()
-    );
-    assert.equal(venusPool2?.totalCash, 0n, "Total cash should be 0");
-
-    const accountIdleBalance2 = mockDbAfterReverseTransfer.entities.AccountIdleBalance.get(
-      userAddress1.toLowerCase() + mockTransfer.srcAddress.toLowerCase()
-    );
-
-    assert.equal(accountIdleBalance2?.balance, 0n, "Account earn balance should be 0");
+    const pool2 = mockDbAfterTx2.entities.VenusPool.get(VenusPoolAddresses[0]);
+    assert.equal(pool2?.exchangeRate, pool?.exchangeRate, "Exchange rate should remain unchanged");
   });
 });

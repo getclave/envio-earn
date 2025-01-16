@@ -3,7 +3,6 @@ interface Interval {
   interval: number;
 
   shouldFetch(key: string, currentBlocknum: number): boolean;
-  addNewKey(key: string): void;
 }
 
 class Interval implements Interval {
@@ -14,13 +13,12 @@ class Interval implements Interval {
     this.interval = interval || 86400;
   }
 
-  addNewKey(key: string) {
-    this.keyToBlocknum.set(key, 0);
-  }
-
   shouldFetch(key: string, currentBlocknum: number) {
     const blocknum = this.keyToBlocknum.get(key);
-    if (!blocknum) return true;
+    if (!blocknum) {
+      this.keyToBlocknum.set(key, currentBlocknum);
+      return true;
+    }
     if (blocknum + this.interval < currentBlocknum) {
       this.keyToBlocknum.set(key, currentBlocknum);
       return true;
@@ -29,4 +27,4 @@ class Interval implements Interval {
   }
 }
 
-const venusInterval = new Interval();
+export const venusExchangeRateInterval = new Interval(21600);
