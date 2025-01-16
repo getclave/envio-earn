@@ -46,6 +46,8 @@ type PoolRegistry {
   id: ID!
   protocol: Protocol!
   pool: String! @index
+  venusPool: [VenusPool!]! @derivedFrom(field: "address")
+  syncswapPool: [SyncswapPool!]! @derivedFrom(field: "address")
 }
 
 type AccountEarnBalance {
@@ -65,7 +67,6 @@ type VenusPool {
   symbol: String
   underlyingToken: Token @index
   exchangeRate: BigInt!
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
 }
 
 type SyncswapPool {
@@ -81,7 +82,6 @@ type SyncswapPool {
   reserve0: BigInt!
   reserve1: BigInt!
   totalSupply: BigInt!
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
 }
 
 type ClaggPool {
