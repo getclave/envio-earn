@@ -31,8 +31,6 @@ class ClaggShareFetcher {
 
     const poolList = Array.from(ClaggPoolsToFetchShare);
 
-    context.log.info("Fetching Clagg shares for " + poolList.length + " pools");
-
     for (let address of poolList) {
       const pool = await context.ClaggPool.get(address);
       if (pool?.adapter_id == null) {

@@ -102,12 +102,10 @@ ERC20.Transfer.handlerWithLoader({
       }
       // Route to protocol-specific handlers
       if (SyncswapPools.has(srcAddress)) {
-        context.log.debug(`Routing to SyncswapAccountHandler`);
         return await SyncswapAccountHandler({ event, context, loaderReturn });
       }
 
       if (VenusPoolAddresses.includes(srcAddress)) {
-        context.log.debug(`Routing to VenusAccountHandler`);
         return await VenusAccountHandler({ event, context, loaderReturn });
       }
       await PlainTransferHandler(event, context, loaderReturn);

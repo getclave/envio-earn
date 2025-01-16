@@ -100,11 +100,6 @@ export const SyncswapAccountHandler = async ({
   loaderReturn: any;
 }) => {
   try {
-    if (!event.srcAddress || !event.params.from || !event.params.to) {
-      context.log.error(`Missing required parameters in SyncswapAccountHandler`);
-      return;
-    }
-
     const { claveAddresses } = loaderReturn as {
       claveAddresses: Set<string>;
     };
@@ -137,7 +132,6 @@ export const SyncswapAccountHandler = async ({
       };
 
       context.AccountEarnBalance.set(accountObject);
-      context.log.debug(`Updated sender balance in Syncswap pool`);
     }
 
     if (claveAddresses.has(toAddress)) {
@@ -154,7 +148,6 @@ export const SyncswapAccountHandler = async ({
       };
 
       context.AccountEarnBalance.set(accountObject);
-      context.log.debug(`Updated receiver balance in Syncswap pool`);
     }
   } catch (error) {
     context.log.error(`Error in SyncswapAccountHandler: ${error}`);
