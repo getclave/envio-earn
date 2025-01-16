@@ -102,7 +102,9 @@ export const VenusAccountHandler = async ({
           : senderAccountBalance.shareBalance - event.params.value,
       userAddress: event.params.from.toLowerCase(),
       protocol: "Venus",
-      poolAddress: pool.id,
+      venusPool_id: pool.id,
+      claggPool_id: undefined,
+      syncswapPool_id: undefined,
     };
 
     context.AccountEarnBalance.set(accountObject);
@@ -118,7 +120,9 @@ export const VenusAccountHandler = async ({
           : event.params.value + receiverAccountBalance.shareBalance,
       userAddress: event.params.to.toLowerCase(),
       protocol: "Venus",
-      poolAddress: pool.id,
+      venusPool_id: pool.id,
+      claggPool_id: undefined,
+      syncswapPool_id: undefined,
     };
 
     context.AccountEarnBalance.set(accountObject);

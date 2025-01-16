@@ -44,7 +44,9 @@ ClaggMain.Deposit.handlerWithLoader({
           ? event.params.shares
           : userBalance.shareBalance + event.params.shares,
       protocol: "Clagg",
-      poolAddress: event.params.pool.toLowerCase(),
+      claggPool_id: event.params.pool.toLowerCase(),
+      syncswapPool_id: undefined,
+      venusPool_id: undefined,
     };
 
     context.AccountEarnBalance.set(createdUserBalance);
@@ -101,7 +103,9 @@ ClaggMain.Withdraw.handlerWithLoader({
           ? 0n - event.params.shares
           : userBalance.shareBalance - event.params.shares,
       protocol: "Clagg",
-      poolAddress: event.params.pool.toLowerCase(),
+      claggPool_id: event.params.pool.toLowerCase(),
+      syncswapPool_id: undefined,
+      venusPool_id: undefined,
     };
 
     context.AccountEarnBalance.set(createdUserBalance);

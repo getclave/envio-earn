@@ -144,7 +144,9 @@ export const SyncswapAccountHandler = async ({
             ? 0n - event.params.value
             : senderAccountBalance.shareBalance - event.params.value,
         userAddress: fromAddress,
-        poolAddress: poolAddress,
+        syncswapPool_id: poolAddress,
+        claggPool_id: undefined,
+        venusPool_id: undefined,
         protocol: "Syncswap",
       };
 
@@ -160,7 +162,9 @@ export const SyncswapAccountHandler = async ({
             ? event.params.value
             : event.params.value + receiverAccountBalance.shareBalance,
         userAddress: toAddress,
-        poolAddress: poolAddress,
+        syncswapPool_id: poolAddress,
+        claggPool_id: undefined,
+        venusPool_id: undefined,
         protocol: "Syncswap",
       };
 

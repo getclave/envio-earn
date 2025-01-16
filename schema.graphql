@@ -51,9 +51,11 @@ type PoolRegistry {
 type AccountEarnBalance {
   id: ID!
   userAddress: String! @index
-  poolAddress: String! @index
-  protocol: Protocol! @index
   shareBalance: BigInt!
+  protocol: Protocol! @index
+  venusPool: VenusPool @index
+  syncswapPool: SyncswapPool @index
+  claggPool: ClaggPool @index
 }
 
 type VenusPool {

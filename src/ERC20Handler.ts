@@ -14,7 +14,7 @@ import {
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { walletCache } from "./utils/WalletCache";
 import { SyncswapAccountHandler } from "./SyncswapHandler";
-import { Address, zeroAddress } from "viem";
+import { Address } from "viem";
 import { VenusPoolAddresses } from "./constants/VenusPools";
 import { VenusAccountHandler } from "./VenusHandler";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
