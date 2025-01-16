@@ -17,6 +17,7 @@ import { SyncswapAccountHandler } from "./SyncswapHandler";
 import { Address, zeroAddress } from "viem";
 import { VenusPoolAddresses } from "./constants/VenusPools";
 import { VenusAccountHandler } from "./VenusHandler";
+import { ClaggMainAddress } from "./constants/ClaggAddresses";
 
 /**
  * Set of Syncswap pool addresses for quick lookup
@@ -79,7 +80,9 @@ ERC20.Transfer.handlerWithLoader({
       }
 
       if (!claveAddresses || claveAddresses.size === 0) {
-        return;
+        if (!isClaggTransfer(event)) {
+          return;
+        }
       }
 
       const fromAddress = event.params.from.toLowerCase();
@@ -179,22 +182,9 @@ async function PlainTransferHandler(
  * @param event The transfer event to check
  * @returns True if the event affects Venus total supply
  */
-function isVenusTotalSupplyChange(event: ERC20_Transfer_event) {
+function isClaggTransfer(event: ERC20_Transfer_event) {
   return (
-    (event.params.to.toLowerCase() == zeroAddress ||
-      event.params.from.toLowerCase() == zeroAddress) &&
-    VenusPoolAddresses.includes(event.srcAddress.toLowerCase())
-  );
-}
-
-/**
- * Checks if a transfer event affects Venus pool's total cash
- * @param event The transfer event to check
- * @returns True if the event affects Venus total cash
- */
-function isVenusTotalCashChange(event: ERC20_Transfer_event) {
-  return (
-    VenusPoolAddresses.includes(event.params.from.toLowerCase()) ||
-    VenusPoolAddresses.includes(event.params.to.toLowerCase())
+    event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase() ||
+    event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()
   );
 }

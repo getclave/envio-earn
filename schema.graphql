@@ -45,6 +45,7 @@ enum Protocol {
 type PoolRegistry {
   id: ID!
   protocol: Protocol!
+  pool: String! @index
 }
 
 type AccountEarnBalance {
@@ -61,9 +62,8 @@ type VenusPool {
   name: String
   symbol: String
   underlyingToken: Token @index
-  protocol: Protocol!
   exchangeRate: BigInt!
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "id")
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
 }
 
 type SyncswapPool {
@@ -79,22 +79,13 @@ type SyncswapPool {
   reserve0: BigInt!
   reserve1: BigInt!
   totalSupply: BigInt!
-  protocol: Protocol!
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "id")
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
 }
 
 type ClaggPool {
   id: ID!
   address: String! @index
-  underlyingToken: Token @index
-  adapter: ClaggAdapter
-  totalLiquidity: BigInt
-  totalSupply: BigInt
-  protocol: Protocol!
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "id")
-}
-
-type ClaggAdapter {
-  id: ID!
-  address: String! @index
+  totalShares: BigInt!
+  totalSupply: BigInt!
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
 }

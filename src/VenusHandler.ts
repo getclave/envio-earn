@@ -11,6 +11,8 @@ import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { AccountEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
 import { venusExchangeRateInterval } from "./utils/intervals";
+import { getOrCreateClaggPool } from "./ClaggHandler";
+import { ClaggMainAddress } from "./constants/ClaggAddresses";
 
 Venus.AccrueInterest.handler(async ({ context, event }) => {
   if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
@@ -63,6 +65,25 @@ export const VenusAccountHandler = async ({
   };
 
   const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
+
+  if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
+    const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
+
+    context.ClaggPool.set({
+      ...pool,
+      totalSupply: pool.totalSupply - event.params.value,
+    });
+    return;
+  }
+
+  if (event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()) {
+    const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
+    context.ClaggPool.set({
+      ...pool,
+      totalSupply: pool.totalSupply + event.params.value,
+    });
+    return;
+  }
 
   const senderAccountBalance = await context.AccountEarnBalance.get(
     event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
@@ -140,13 +161,13 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
       underlyingToken_id: createdToken.id,
       name: name.result as string,
       symbol: symbol.result as string,
-      protocol: "Venus",
       exchangeRate: exchangeRate.result as bigint,
     };
 
     context.PoolRegistry.set({
       id: poolAddress.toLowerCase(),
       protocol: "Venus",
+      pool: poolAddress.toLowerCase(),
     });
     context.VenusPool.set(newVenusPool);
 

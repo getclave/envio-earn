@@ -18,6 +18,8 @@ import { SyncswapPoolABI } from "./abi/SyncswapPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
 import { SyncswapPools } from "./ERC20Handler";
+import { ClaggMainAddress } from "./constants/ClaggAddresses";
+import { getOrCreateClaggPool } from "./ClaggHandler";
 
 /**
  * Handles new pool creation events from the Syncswap Factory
@@ -104,8 +106,23 @@ export const SyncswapAccountHandler = async ({
       claveAddresses: Set<string>;
     };
 
-    if (!claveAddresses) {
-      context.log.error(`Missing claveAddresses in loaderReturn`);
+    if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
+      const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
+
+      context.ClaggPool.set({
+        ...pool,
+        totalSupply: pool.totalSupply - event.params.value,
+      });
+      return;
+    }
+
+    if (event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()) {
+      const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
+
+      context.ClaggPool.set({
+        ...pool,
+        totalSupply: pool.totalSupply + event.params.value,
+      });
       return;
     }
 
@@ -200,12 +217,12 @@ export async function createPool(
     reserve0: 0n,
     reserve1: 0n,
     totalSupply: totalSupply.result as bigint,
-    protocol: "Syncswap",
   };
 
   context.PoolRegistry.set({
     id: event.params.pool.toLowerCase(),
     protocol: "Syncswap",
+    pool: event.params.pool.toLowerCase(),
   });
 
   context.SyncswapPool.set(newSyncswapPool);

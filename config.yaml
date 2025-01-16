@@ -35,13 +35,12 @@ networks:
             field_selection:
               transaction_fields:
                 - "from"
-      #! - name: ClaggMain
-      #   handler: src/ClaggHandler.ts
-      #   address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
-      #   events:
-      #     - event: "AdapterAdded(address indexed adapter)"
-      #     - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
-      #     - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+      - name: ClaggMain
+        handler: src/ClaggHandler.ts
+        address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
+        events:
+          - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+          - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
       - name: Venus
         handler: src/VenusHandler.ts
         address:

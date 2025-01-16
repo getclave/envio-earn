@@ -2,7 +2,8 @@ import assert from "assert";
 import { TestHelpers, AccountIdleBalance } from "generated";
 import { zeroAddress } from "viem";
 import { VenusPoolAddresses } from "../src/constants/VenusPools";
-const { MockDb, ERC20, Addresses, Venus, SyncswapFactory, SyncswapPool } = TestHelpers;
+import { ClaggMainAddress } from "../src/constants/ClaggAddresses";
+const { MockDb, ERC20, Addresses, Venus, SyncswapFactory, SyncswapPool, ClaggMain } = TestHelpers;
 
 process.env.NODE_ENV = "test";
 
@@ -267,5 +268,108 @@ describe("ERC20Handler", () => {
       userAddress1.toLowerCase() + poolAdd.toLowerCase()
     );
     assert.equal(accountBalance2?.shareBalance, -100n, "Share balance should be set");
+  });
+
+  it("Clagg should handle minting and burning correctly", async () => {
+    const mockDb = MockDb.createMockDb();
+    const userAddress = Addresses.mockAddresses[0];
+    const claggPoolAddress = ClaggMainAddress;
+    const venusPoolAddress = VenusPoolAddresses[0];
+    const token0 = "0x367700c33ea7d4523403ca8ca790918ccb76dAb4";
+    const token1 = "0x65006841486feb84570d909703ad646ddeaf0f5B";
+    const poolAdd = "0x14A7a4bea54983796086eaea935564c5f33179c5";
+
+    const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
+      mockEventData: {
+        srcAddress: "0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb",
+      },
+      pool: poolAdd,
+      token0,
+      token1,
+    });
+
+    const mockDbAfterPool = await SyncswapFactory.PoolCreated.processEvent({
+      event: mockPool,
+      mockDb,
+    });
+
+    // Test minting Clagg shares
+    const mockMint = ClaggMain.Deposit.createMockEvent({
+      user: userAddress,
+      pool: poolAdd,
+      amount: 130n,
+      shares: 100n,
+      mockEventData: {
+        srcAddress: ClaggMainAddress,
+      },
+    });
+
+    const mockDbAfterMint = await ClaggMain.Deposit.processEvent({
+      event: mockMint,
+      mockDb: mockDbAfterPool,
+    });
+
+    // Verify Clagg pool state after mint
+    const pool = mockDbAfterMint.entities.ClaggPool.get(poolAdd.toLowerCase());
+    assert.equal(pool?.totalShares, 100n, "Total shares should be updated after mint");
+
+    // Verify user balance
+    const userBalance = mockDbAfterMint.entities.AccountEarnBalance.get(
+      userAddress.toLowerCase() + poolAdd.toLowerCase() + claggPoolAddress.toLowerCase()
+    );
+
+    assert.equal(
+      userBalance?.shareBalance,
+      100n,
+      "User share balance should be updated after mint"
+    );
+
+    // Test burning Clagg shares
+    const mockBurn = ClaggMain.Withdraw.createMockEvent({
+      user: userAddress,
+      pool: poolAdd,
+      amount: 40n,
+      shares: 50n,
+      mockEventData: {
+        srcAddress: ClaggMainAddress,
+      },
+    });
+
+    const mockDbAfterBurn = await ClaggMain.Withdraw.processEvent({
+      event: mockBurn,
+      mockDb: mockDbAfterMint,
+    });
+
+    // Verify Clagg pool state after burn
+    const poolAfterBurn = mockDbAfterBurn.entities.ClaggPool.get(poolAdd.toLowerCase());
+    assert.equal(poolAfterBurn?.totalShares, 50n, "Total shares should be reduced after burn");
+
+    // Verify user balance after burn
+    const userBalanceAfterBurn = mockDbAfterBurn.entities.AccountEarnBalance.get(
+      userAddress.toLowerCase() + poolAdd.toLowerCase() + claggPoolAddress.toLowerCase()
+    );
+    assert.equal(
+      userBalanceAfterBurn?.shareBalance,
+      50n,
+      "User share balance should be reduced after burn"
+    );
+
+    // Test integration with Venus pool
+    const mockVenusTransfer = ERC20.Transfer.createMockEvent({
+      from: zeroAddress,
+      to: claggPoolAddress,
+      value: 200n,
+      mockEventData: {
+        srcAddress: venusPoolAddress,
+      },
+    });
+
+    const mockDbAfterVenus = await ERC20.Transfer.processEvent({
+      event: mockVenusTransfer,
+      mockDb: mockDbAfterBurn,
+    });
+
+    const claggPool = mockDbAfterVenus.entities.ClaggPool.get(venusPoolAddress.toLowerCase());
+    assert.equal(claggPool?.totalSupply, 200n, "Total supply should be updated after mint");
   });
 });
