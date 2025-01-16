@@ -3,7 +3,7 @@ name: clave-indexer
 description: Clave Indexer
 networks:
   - id: 324
-    start_block: 9767
+    start_block: 52887531
     contracts:
       - name: ERC20 # Both for ERC20Transfer and Venus
         handler: src/ERC20Handler.ts
@@ -60,4 +60,5 @@ rollback_on_reorg: false
 #* 9767 syncswap first block
 #* 43552171 venus first block
 #* 24805087 clave first block
+#* 52887531 clagg first block
 
