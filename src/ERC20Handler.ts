@@ -18,6 +18,8 @@ import { Address } from "viem";
 import { VenusPoolAddresses } from "./constants/VenusPools";
 import { VenusAccountHandler } from "./VenusHandler";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
+import { AavePoolAddresses } from "./constants/AavePools";
+import { AaveAccountHandler } from "./AaveHandler";
 
 /**
  * Set of Syncswap pool addresses for quick lookup
@@ -111,6 +113,11 @@ ERC20.Transfer.handlerWithLoader({
       if (VenusPoolAddresses.includes(srcAddress)) {
         return await VenusAccountHandler({ event, context, loaderReturn });
       }
+
+      if (AavePoolAddresses.includes(srcAddress)) {
+        return await AaveAccountHandler({ event, context, loaderReturn });
+      }
+
       await PlainTransferHandler(event, context, loaderReturn);
     } catch (error) {
       context.log.error(`Error in ERC20 Transfer handler: ${error}`);

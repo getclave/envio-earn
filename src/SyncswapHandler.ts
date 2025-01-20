@@ -5,9 +5,9 @@
  */
 
 import {
-  AccountEarnBalance,
   ERC20_Transfer_event,
   handlerContext,
+  SyncswapEarnBalance,
   SyncswapFactory,
   SyncswapFactory_PoolCreated_event,
   SyncswapPool,
@@ -131,13 +131,13 @@ export const SyncswapAccountHandler = async ({
     const poolAddress = event.srcAddress.toLowerCase();
 
     const [senderAccountBalance, receiverAccountBalance] = await Promise.all([
-      context.AccountEarnBalance.get(fromAddress + poolAddress),
-      context.AccountEarnBalance.get(toAddress + poolAddress),
+      context.SyncswapEarnBalance.get(fromAddress + poolAddress),
+      context.SyncswapEarnBalance.get(toAddress + poolAddress),
     ]);
 
     if (claveAddresses.has(fromAddress)) {
       // Update sender's account balance
-      let accountObject: AccountEarnBalance = {
+      let accountObject: SyncswapEarnBalance = {
         id: fromAddress + poolAddress,
         shareBalance:
           senderAccountBalance == undefined
@@ -145,17 +145,14 @@ export const SyncswapAccountHandler = async ({
             : senderAccountBalance.shareBalance - event.params.value,
         userAddress: fromAddress,
         syncswapPool_id: poolAddress,
-        claggPool_id: undefined,
-        venusPool_id: undefined,
-        protocol: "Syncswap",
       };
 
-      context.AccountEarnBalance.set(accountObject);
+      context.SyncswapEarnBalance.set(accountObject);
     }
 
     if (claveAddresses.has(toAddress)) {
       // Update receiver's account balance
-      let accountObject: AccountEarnBalance = {
+      let accountObject: SyncswapEarnBalance = {
         id: toAddress + poolAddress,
         shareBalance:
           receiverAccountBalance == undefined
@@ -163,12 +160,9 @@ export const SyncswapAccountHandler = async ({
             : event.params.value + receiverAccountBalance.shareBalance,
         userAddress: toAddress,
         syncswapPool_id: poolAddress,
-        claggPool_id: undefined,
-        venusPool_id: undefined,
-        protocol: "Syncswap",
       };
 
-      context.AccountEarnBalance.set(accountObject);
+      context.SyncswapEarnBalance.set(accountObject);
     }
   } catch (error) {
     context.log.error(`Error in SyncswapAccountHandler: ${error}`);

@@ -3,7 +3,9 @@ import { TestHelpers, AccountIdleBalance } from "generated";
 import { zeroAddress } from "viem";
 import { VenusPoolAddresses } from "../src/constants/VenusPools";
 import { ClaggMainAddress } from "../src/constants/ClaggAddresses";
-const { MockDb, ERC20, Addresses, Venus, SyncswapFactory, SyncswapPool, ClaggMain } = TestHelpers;
+import { AavePoolAddresses } from "../src/constants/AavePools";
+const { MockDb, ERC20, Addresses, Venus, SyncswapFactory, SyncswapPool, ClaggMain, Aave } =
+  TestHelpers;
 
 process.env.NODE_ENV = "test";
 
@@ -127,7 +129,7 @@ describe("ERC20Handler", () => {
     const pool = mockDbAfterMint.entities.VenusPool.get(VenusPoolAddresses[0]);
     assert.notEqual(pool?.exchangeRate, 0n, "Exchange rate should be set");
 
-    const account1Balance = mockDbAfterMint.entities.AccountEarnBalance.get(
+    const account1Balance = mockDbAfterMint.entities.VenusEarnBalance.get(
       userAddress1.toLowerCase() + VenusPoolAddresses[0].toLowerCase()
     );
     assert.equal(account1Balance?.shareBalance, 3n, "Account earn balance should be set");
@@ -260,11 +262,11 @@ describe("ERC20Handler", () => {
       mockDb: mockDbAfterBurn,
     });
 
-    const accountBalance = mockDbAfterTransfer.entities.AccountEarnBalance.get(
+    const accountBalance = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
       userAddress2.toLowerCase() + poolAdd.toLowerCase()
     );
     assert.equal(accountBalance?.shareBalance, 100n, "Share balance should be set");
-    const accountBalance2 = mockDbAfterTransfer.entities.AccountEarnBalance.get(
+    const accountBalance2 = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
       userAddress1.toLowerCase() + poolAdd.toLowerCase()
     );
     assert.equal(accountBalance2?.shareBalance, -100n, "Share balance should be set");
@@ -314,8 +316,8 @@ describe("ERC20Handler", () => {
     assert.equal(pool?.totalShares, 100n, "Total shares should be updated after mint");
 
     // Verify user balance
-    const userBalance = mockDbAfterMint.entities.AccountEarnBalance.get(
-      userAddress.toLowerCase() + poolAdd.toLowerCase() + claggPoolAddress.toLowerCase()
+    const userBalance = mockDbAfterMint.entities.ClaggEarnBalance.get(
+      userAddress.toLowerCase() + poolAdd.toLowerCase()
     );
 
     assert.equal(
@@ -345,8 +347,8 @@ describe("ERC20Handler", () => {
     assert.equal(poolAfterBurn?.totalShares, 50n, "Total shares should be reduced after burn");
 
     // Verify user balance after burn
-    const userBalanceAfterBurn = mockDbAfterBurn.entities.AccountEarnBalance.get(
-      userAddress.toLowerCase() + poolAdd.toLowerCase() + claggPoolAddress.toLowerCase()
+    const userBalanceAfterBurn = mockDbAfterBurn.entities.ClaggEarnBalance.get(
+      userAddress.toLowerCase() + poolAdd.toLowerCase()
     );
     assert.equal(
       userBalanceAfterBurn?.shareBalance,
@@ -371,5 +373,160 @@ describe("ERC20Handler", () => {
 
     const claggPool = mockDbAfterVenus.entities.ClaggPool.get(venusPoolAddress.toLowerCase());
     assert.equal(claggPool?.totalSupply, 200n, "Total supply should be updated after mint");
+  });
+
+  it("Aave minting new tokens", async () => {
+    const mockMint = Aave.Mint.createMockEvent({
+      caller: userAddress1,
+      onBehalfOf: userAddress1,
+      value: 100n,
+      balanceIncrease: 100n,
+      index: 1000000n,
+      mockEventData: {
+        srcAddress: AavePoolAddresses[0],
+      },
+    });
+
+    const mockDbAfterMint = await Aave.Mint.processEvent({
+      event: mockMint,
+      mockDb,
+    });
+
+    // Verify pool state
+    const pool = mockDbAfterMint.entities.AavePool.get(AavePoolAddresses[0].toLowerCase());
+    assert.equal(pool?.lastIndex, 1000000n, "Last index should be updated");
+
+    // Verify user balance
+    const userBalance = mockDbAfterMint.entities.AaveEarnBalance.get(
+      userAddress1.toLowerCase() + AavePoolAddresses[0].toLowerCase()
+    );
+
+    assert.equal(userBalance?.userIndex, 1000000n, "User index should be set");
+  });
+
+  it("Aave burning tokens", async () => {
+    // First mint some tokens
+    const mockMint = Aave.Mint.createMockEvent({
+      caller: userAddress1,
+      onBehalfOf: userAddress1,
+      value: 100n,
+      balanceIncrease: 100n,
+      index: 1000000n,
+      mockEventData: {
+        srcAddress: AavePoolAddresses[0],
+      },
+    });
+
+    const mockDbAfterMint = await Aave.Mint.processEvent({
+      event: mockMint,
+      mockDb,
+    });
+
+    // Then burn some tokens
+    const mockBurn = Aave.Burn.createMockEvent({
+      from: userAddress1,
+      target: userAddress2,
+      value: 50n,
+      balanceIncrease: 0n,
+      index: 1100000n,
+      mockEventData: {
+        srcAddress: AavePoolAddresses[0],
+      },
+    });
+
+    const mockDbAfterBurn = await Aave.Burn.processEvent({
+      event: mockBurn,
+      mockDb: mockDbAfterMint,
+    });
+
+    // Verify pool state
+    const pool = mockDbAfterBurn.entities.AavePool.get(AavePoolAddresses[0].toLowerCase());
+    assert.equal(pool?.lastIndex, 1100000n, "Last index should be updated after burn");
+
+    // Verify user balance
+    const userBalance = mockDbAfterBurn.entities.AaveEarnBalance.get(
+      userAddress1.toLowerCase() + AavePoolAddresses[0].toLowerCase()
+    );
+    assert.equal(userBalance?.userIndex, 1100000n, "User index should be updated after burn");
+  });
+
+  it("Aave transfer between users", async () => {
+    const userAddress2 = Addresses.mockAddresses[1];
+    const mockTransfer = ERC20.Transfer.createMockEvent({
+      from: userAddress1,
+      to: userAddress2,
+      value: 30n,
+      mockEventData: {
+        srcAddress: AavePoolAddresses[0],
+      },
+    });
+
+    const mockDbAfterTransfer = await ERC20.Transfer.processEvent({
+      event: mockTransfer,
+      mockDb,
+    });
+
+    // Verify sender balance
+    const senderBalance = mockDbAfterTransfer.entities.AaveEarnBalance.get(
+      userAddress1.toLowerCase() + AavePoolAddresses[0].toLowerCase()
+    );
+
+    assert.equal(senderBalance?.shareBalance, -30n, "Sender balance should be reduced");
+
+    // Verify receiver balance
+    const receiverBalance = mockDbAfterTransfer.entities.AaveEarnBalance.get(
+      userAddress2.toLowerCase() + AavePoolAddresses[0].toLowerCase()
+    );
+    assert.equal(receiverBalance?.shareBalance, 30n, "Receiver balance should be increased");
+  });
+
+  it("Aave transfer to/from Clagg", async () => {
+    // Test transfer to Clagg
+    const mockTransferToClagg = ERC20.Transfer.createMockEvent({
+      from: userAddress1,
+      to: ClaggMainAddress,
+      value: 50n,
+      mockEventData: {
+        srcAddress: AavePoolAddresses[0],
+      },
+    });
+
+    const mockDbAfterToClagg = await ERC20.Transfer.processEvent({
+      event: mockTransferToClagg,
+      mockDb,
+    });
+
+    const claggPoolAfterDeposit = mockDbAfterToClagg.entities.ClaggPool.get(
+      AavePoolAddresses[0].toLowerCase()
+    );
+    assert.equal(
+      claggPoolAfterDeposit?.totalSupply,
+      50n,
+      "Clagg pool total supply should increase after deposit"
+    );
+
+    // Test transfer from Clagg
+    const mockTransferFromClagg = ERC20.Transfer.createMockEvent({
+      from: ClaggMainAddress,
+      to: userAddress1,
+      value: 20n,
+      mockEventData: {
+        srcAddress: AavePoolAddresses[0],
+      },
+    });
+
+    const mockDbAfterFromClagg = await ERC20.Transfer.processEvent({
+      event: mockTransferFromClagg,
+      mockDb: mockDbAfterToClagg,
+    });
+
+    const claggPoolAfterWithdraw = mockDbAfterFromClagg.entities.ClaggPool.get(
+      AavePoolAddresses[0].toLowerCase()
+    );
+    assert.equal(
+      claggPoolAfterWithdraw?.totalSupply,
+      30n,
+      "Clagg pool total supply should decrease after withdrawal"
+    );
   });
 });

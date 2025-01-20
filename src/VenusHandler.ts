@@ -9,7 +9,7 @@ import { Address, getContract } from "viem";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
 import { getOrCreateToken } from "./utils/GetTokenData";
-import { AccountEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
+import { VenusEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
 import { venusExchangeRateInterval } from "./utils/intervals";
 import { getOrCreateClaggPool } from "./ClaggHandler";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
@@ -85,47 +85,41 @@ export const VenusAccountHandler = async ({
     return;
   }
 
-  const senderAccountBalance = await context.AccountEarnBalance.get(
+  const senderAccountBalance = await context.VenusEarnBalance.get(
     event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
   );
-  const receiverAccountBalance = await context.AccountEarnBalance.get(
+  const receiverAccountBalance = await context.VenusEarnBalance.get(
     event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
   );
 
   if (claveAddresses.has(event.params.from.toLowerCase())) {
     // Update sender's account balance
-    let accountObject: AccountEarnBalance_t = {
+    let accountObject: VenusEarnBalance_t = {
       id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
         senderAccountBalance == undefined
           ? 0n - event.params.value
           : senderAccountBalance.shareBalance - event.params.value,
       userAddress: event.params.from.toLowerCase(),
-      protocol: "Venus",
       venusPool_id: pool.id,
-      claggPool_id: undefined,
-      syncswapPool_id: undefined,
     };
 
-    context.AccountEarnBalance.set(accountObject);
+    context.VenusEarnBalance.set(accountObject);
   }
 
   if (claveAddresses.has(event.params.to.toLowerCase())) {
     // Update receiver's account balance
-    let accountObject: AccountEarnBalance_t = {
+    let accountObject: VenusEarnBalance_t = {
       id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
       shareBalance:
         receiverAccountBalance == undefined
           ? event.params.value
           : event.params.value + receiverAccountBalance.shareBalance,
       userAddress: event.params.to.toLowerCase(),
-      protocol: "Venus",
       venusPool_id: pool.id,
-      claggPool_id: undefined,
-      syncswapPool_id: undefined,
     };
 
-    context.AccountEarnBalance.set(accountObject);
+    context.VenusEarnBalance.set(accountObject);
   }
 };
 

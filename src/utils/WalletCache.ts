@@ -16,9 +16,16 @@ class WalletCache {
   private redisCommand: Awaited<ReturnType<typeof getRedisInstance>> | undefined;
   private redisSub: Awaited<ReturnType<typeof getRedisInstance>> | undefined;
   private inMemoryCache: Set<string> = new Set();
+  private initializationPromise: Promise<void> | null = null;
 
   constructor() {
-    this.initialize();
+    // Create the promise immediately and store it
+    this.initializationPromise = this.initialize();
+
+    // Execute the promise
+    this.initializationPromise.catch((error) => {
+      console.error("Failed to initialize WalletCache:", error);
+    });
   }
 
   /**
@@ -26,10 +33,16 @@ class WalletCache {
    * Creates separate connections for commands and subscriptions
    * Loads initial data and sets up real-time updates
    */
-  async initialize() {
+  private async initialize() {
     if (process.env.NODE_ENV === "test") {
       return;
     }
+
+    if (this.redisCommand && this.redisSub) {
+      return;
+    }
+
+    console.log("Starting Redis initialization");
 
     // Create two connections - one for subscribing and one for getting data
     const [commandClient, subClient] = await Promise.all([
@@ -57,6 +70,8 @@ class WalletCache {
 
     await this.updateInMemoryCache();
     await this.subscribeToSetOperations();
+
+    console.log("Redis initialization complete");
   }
 
   /**
@@ -110,4 +125,5 @@ class WalletCache {
   }
 }
 
+// Single instance exported - this will trigger initialization
 export const walletCache = new WalletCache();

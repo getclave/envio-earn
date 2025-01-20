@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
 name: clave-indexer
-description: Clave Indexer
+description: Clave Balances Indexer
 networks:
   - id: 324
-    start_block: 9767
+    start_block: 44671523
     contracts:
       - name: ERC20 # Both for ERC20Transfer and Venus
         handler: src/ERC20Handler.ts
@@ -35,12 +35,17 @@ networks:
             field_selection:
               transaction_fields:
                 - "from"
-      - name: ClaggMain
-        handler: src/ClaggHandler.ts
-        address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
+      - name: Aave
+        handler: src/AaveHandler.ts
+        address:
+          - 0xE977F9B2a5ccf0457870a67231F23BE4DaecfbDb
+          - 0xC48574bc5358c967d9447e7Df70230Fdb469e4E7
+          - 0xb7b93bCf82519bB757Fd18b23A389245Dbd8ca64
+          - 0xd4e607633F3d984633E946aEA4eb71f92564c1c9
+          - 0xd6cD2c0fC55936498726CacC497832052A9B2D1B
         events:
-          - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
-          - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+          - event: "Mint(address indexed caller, address indexed onBehalfOf, uint256 value, uint256 balanceIncrease, uint256 index)"
+          - event: "Burn(address indexed from, address indexed target, uint256 value, uint256 balanceIncrease, uint256 index)"
       - name: Venus
         handler: src/VenusHandler.ts
         address:
@@ -56,9 +61,16 @@ networks:
           - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
           - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
           - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
+      - name: ClaggMain
+        handler: src/ClaggHandler.ts
+        address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
+        events:
+          - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+          - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
+
 rollback_on_reorg: false
 #* 9767 syncswap first block
 #* 43552171 venus first block
 #* 24805087 clave first block
 #* 52887531 clagg first block
-
+#* 44671523 aave first block
