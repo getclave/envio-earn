@@ -1,11 +1,12 @@
 # ACCOUNTS
 
 type Account {
-  id: ID!
+  id: ID! # User address
   address: String! @index
   idleBalances: [AccountIdleBalance!]! @derivedFrom(field: "address")
   syncswapEarnBalances: [SyncswapEarnBalance!]! @derivedFrom(field: "userAddress")
   venusEarnBalances: [VenusEarnBalance!]! @derivedFrom(field: "userAddress")
+  aaveEarnBalances: [AaveEarnBalance!]! @derivedFrom(field: "userAddress")
   claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "userAddress")
   historicalIdleBalances: [HistoricalAccountIdleBalance!]! @derivedFrom(field: "address")
 }
@@ -13,14 +14,14 @@ type Account {
 # IDLE
 
 type AccountIdleBalance @index(fields: ["address", "balance"]) {
-  id: ID!
+  id: ID! # User address + token address
   address: String! @index
   balance: BigInt! @index
   token: Token! @index
 }
 
 type HistoricalAccountIdleBalance {
-  id: ID!
+  id: ID! # User address + token address + timestamp
   address: String! @index
   balance: BigInt!
   token: Token! @index
@@ -30,7 +31,7 @@ type HistoricalAccountIdleBalance {
 # UTILITIES
 
 type Token {
-  id: ID!
+  id: ID! # Token address
   name: String
   symbol: String
   decimals: Int
@@ -45,7 +46,7 @@ enum Protocol {
 }
 
 type PoolRegistry {
-  id: ID!
+  id: ID! # Pool address
   protocol: Protocol!
   pool: String! @index
   venusPool: [VenusPool!]! @derivedFrom(field: "address")
@@ -54,14 +55,14 @@ type PoolRegistry {
 }
 
 type VenusEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
-  id: ID!
+  id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
   venusPool: VenusPool @index
 }
 
 type VenusPool {
-  id: ID!
+  id: ID! # Pool address
   address: String! @index
   name: String
   symbol: String
@@ -70,14 +71,14 @@ type VenusPool {
 }
 
 type SyncswapEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
-  id: ID!
+  id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
   syncswapPool: SyncswapPool @index
 }
 
 type SyncswapPool {
-  id: ID!
+  id: ID! # Pool address
   name: String
   symbol: String
   address: String! @index
@@ -92,7 +93,7 @@ type SyncswapPool {
 }
 
 type AaveEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
-  id: ID!
+  id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
   userIndex: BigInt!
@@ -100,7 +101,7 @@ type AaveEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
 }
 
 type AavePool {
-  id: ID!
+  id: ID! # Pool address
   address: String! @index
   name: String
   symbol: String
@@ -109,14 +110,14 @@ type AavePool {
 }
 
 type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
-  id: ID!
+  id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
   claggPool: ClaggPool @index
 }
 
 type ClaggPool {
-  id: ID!
+  id: ID! # Pool address
   address: String! @index
   totalShares: BigInt!
   totalSupply: BigInt!
