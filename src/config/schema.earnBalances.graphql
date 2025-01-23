@@ -1,3 +1,12 @@
+# UTILITIES
+
+type Token {
+  id: ID! # Token address
+  name: String
+  symbol: String
+  decimals: Int
+}
+
 # ACCOUNTS
 
 type Account {
@@ -26,15 +35,6 @@ type HistoricalAccountIdleBalance {
   balance: BigInt!
   token: Token! @index
   timestamp: BigInt! @index
-}
-
-# UTILITIES
-
-type Token {
-  id: ID! # Token address
-  name: String
-  symbol: String
-  decimals: Int
 }
 
 # EARN

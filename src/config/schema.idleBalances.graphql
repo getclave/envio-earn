@@ -1,0 +1,125 @@
+# UTILITIES
+
+type Token {
+  id: ID! # Token address
+  name: String
+  symbol: String
+  decimals: Int
+}
+
+# ACCOUNTS
+
+type Account {
+  id: ID! # User address
+  address: String! @index
+  idleBalances: [AccountIdleBalance!]! @derivedFrom(field: "address")
+  syncswapEarnBalances: [SyncswapEarnBalance!]! @derivedFrom(field: "userAddress")
+  venusEarnBalances: [VenusEarnBalance!]! @derivedFrom(field: "userAddress")
+  aaveEarnBalances: [AaveEarnBalance!]! @derivedFrom(field: "userAddress")
+  claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "userAddress")
+  historicalIdleBalances: [HistoricalAccountIdleBalance!]! @derivedFrom(field: "address")
+}
+
+# IDLE
+
+type AccountIdleBalance @index(fields: ["address", "balance"]) {
+  id: ID! # User address + token address
+  address: String! @index
+  balance: BigInt! @index
+  token: Token! @index
+}
+
+type HistoricalAccountIdleBalance {
+  id: ID! # User address + token address + timestamp
+  address: String! @index
+  balance: BigInt!
+  token: Token! @index
+  timestamp: BigInt! @index
+}
+
+# EARN
+
+enum Protocol {
+  Venus
+  Syncswap
+  Aave
+}
+
+type PoolRegistry {
+  id: ID! # Pool address
+  protocol: Protocol!
+  pool: String! @index
+  venusPool: [VenusPool!]! @derivedFrom(field: "address")
+  syncswapPool: [SyncswapPool!]! @derivedFrom(field: "address")
+  aavePool: [AavePool!]! @derivedFrom(field: "address")
+}
+
+type VenusEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
+  id: ID! # User address + pool address
+  userAddress: String! @index
+  shareBalance: BigInt! @index
+  venusPool: VenusPool @index
+}
+
+type VenusPool {
+  id: ID! # Pool address
+  address: String! @index
+  name: String
+  symbol: String
+  underlyingToken: Token
+  exchangeRate: BigInt!
+}
+
+type SyncswapEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
+  id: ID! # User address + pool address
+  userAddress: String! @index
+  shareBalance: BigInt! @index
+  syncswapPool: SyncswapPool @index
+}
+
+type SyncswapPool {
+  id: ID! # Pool address
+  name: String
+  symbol: String
+  address: String! @index
+  underlyingToken: Token
+  underlyingToken2: Token
+  poolType: BigInt
+  token0PrecisionMultiplier: BigInt
+  token1PrecisionMultiplier: BigInt
+  reserve0: BigInt!
+  reserve1: BigInt!
+  totalSupply: BigInt!
+}
+
+type AaveEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
+  id: ID! # User address + pool address
+  userAddress: String! @index
+  shareBalance: BigInt! @index
+  userIndex: BigInt!
+  aavePool: AavePool @index
+}
+
+type AavePool {
+  id: ID! # Pool address
+  address: String! @index
+  name: String
+  symbol: String
+  underlyingToken: Token
+  lastIndex: BigInt!
+}
+
+type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
+  id: ID! # User address + pool address
+  userAddress: String! @index
+  shareBalance: BigInt! @index
+  claggPool: ClaggPool @index
+}
+
+type ClaggPool {
+  id: ID! # Pool address
+  address: String! @index
+  totalShares: BigInt!
+  totalSupply: BigInt!
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+}
