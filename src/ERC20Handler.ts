@@ -106,15 +106,15 @@ ERC20.Transfer.handlerWithLoader({
         });
       }
       // Route to protocol-specific handlers
-      if (SyncswapPools.has(srcAddress)) {
+      if (SyncswapPools.has(srcAddress.toLowerCase() as Address)) {
         return await SyncswapAccountHandler({ event, context, loaderReturn });
       }
 
-      if (VenusPoolAddresses.includes(srcAddress)) {
+      if (VenusPoolAddresses.includes(srcAddress.toLowerCase() as Address)) {
         return await VenusAccountHandler({ event, context, loaderReturn });
       }
 
-      if (AavePoolAddresses.includes(srcAddress)) {
+      if (AavePoolAddresses.includes(srcAddress.toLowerCase() as Address)) {
         return await AaveAccountHandler({ event, context, loaderReturn });
       }
 
