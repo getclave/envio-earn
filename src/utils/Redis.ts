@@ -32,8 +32,8 @@ export const getRedisInstance = async ({
   port,
   username = "default",
   password,
-  isSubscriptionClient = false,
-}: Params & { isSubscriptionClient?: boolean }): Promise<
+  notifyKeyspaceEvents = false,
+}: Params & { notifyKeyspaceEvents?: boolean }): Promise<
   RedisClientType<RedisModules, RedisFunctions, RedisScripts>
 > => {
   const client = createClient({
@@ -50,9 +50,8 @@ export const getRedisInstance = async ({
   client.on("error", (err) => console.error("Redis Client Error", err));
   await client.connect();
 
-  // Only set keyspace notifications for non-subscription clients
-  if (!isSubscriptionClient) {
-    await client.configSet("notify-keyspace-events", "KE$");
+  if (notifyKeyspaceEvents) {
+    await client.configSet("notify-keyspace-events", "AKE");
   }
 
   return client;

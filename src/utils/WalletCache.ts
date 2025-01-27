@@ -53,6 +53,7 @@ class WalletCache {
         port: parseInt(process.env.ENVIO_REDIS_PORT || "12945"),
         username: process.env.ENVIO_REDIS_USERNAME || "default",
         password: process.env.ENVIO_REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
+        notifyKeyspaceEvents: true,
       }),
       getRedisInstance({
         host:
@@ -61,7 +62,6 @@ class WalletCache {
         port: parseInt(process.env.ENVIO_REDIS_PORT || "12945"),
         username: process.env.ENVIO_REDIS_USERNAME || "default",
         password: process.env.ENVIO_REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
-        isSubscriptionClient: true,
       }),
     ]);
 
@@ -90,9 +90,16 @@ class WalletCache {
   private async subscribeToSetOperations() {
     const keyspaceChannel = `__keyspace@0__:${this.CACHE_KEY}`;
 
-    await this.redisSub!.subscribe(keyspaceChannel, () => {
-      this.updateInMemoryCache();
-    });
+    try {
+      await this.redisSub!.subscribe(keyspaceChannel, (message) => {
+        this.updateInMemoryCache().catch((error) => {
+          console.error("Failed to update in-memory cache:", error);
+        });
+      });
+      console.log(`Subscribed to ${keyspaceChannel}`);
+    } catch (error) {
+      console.error("Failed to subscribe to keyspace events:", error);
+    }
   }
 
   /**

@@ -54,6 +54,7 @@ class SyncswapCache {
         port: parseInt(process.env.ENVIO_REDIS_PORT || "12945"),
         username: process.env.ENVIO_REDIS_USERNAME || "default",
         password: process.env.ENVIO_REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
+        notifyKeyspaceEvents: true,
       }),
       getRedisInstance({
         host:
@@ -62,31 +63,24 @@ class SyncswapCache {
         port: parseInt(process.env.ENVIO_REDIS_PORT || "12945"),
         username: process.env.ENVIO_REDIS_USERNAME || "default",
         password: process.env.ENVIO_REDIS_PASSWORD || "YPbmBSP7lBumkk4oL6djJH4tfowkpDNo",
-        isSubscriptionClient: true,
       }),
     ]);
-
     this.redisCommand = commandClient;
     this.redisSub = subClient;
 
     await this.updateInMemoryCache();
     await this.subscribeToSetOperations();
-
-    console.log("Redis-Syncswap initialization complete");
   }
 
-  async addPool(pool: Address) {
-    await this.redisCommand!.sAdd(this.CACHE_KEY, pool.toLowerCase());
-    this.inMemoryCache.add(pool.toLowerCase());
-  }
-
-  /**
-   * Updates the in-memory cache with current Redis data
-   * Synchronizes the local cache with the persistent storage
-   */
   private async updateInMemoryCache() {
     const members = await this.redisCommand!.sMembers(this.CACHE_KEY);
     this.inMemoryCache = new Set(members);
+  }
+
+  async addPool(pool: Address) {
+    const lowercasePool = pool.toLowerCase();
+    await this.redisCommand!.sAdd(this.CACHE_KEY, lowercasePool);
+    this.inMemoryCache.add(lowercasePool);
   }
 
   /**
@@ -96,9 +90,15 @@ class SyncswapCache {
   private async subscribeToSetOperations() {
     const keyspaceChannel = `__keyspace@0__:${this.CACHE_KEY}`;
 
-    await this.redisSub!.subscribe(keyspaceChannel, () => {
-      this.updateInMemoryCache();
-    });
+    try {
+      await this.redisSub!.subscribe(keyspaceChannel, (message) => {
+        this.updateInMemoryCache().catch((error) => {
+          console.error("Failed to update in-memory cache:", error);
+        });
+      });
+    } catch (error) {
+      console.error("Failed to subscribe to keyspace events:", error);
+    }
   }
 
   /**
