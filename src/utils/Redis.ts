@@ -14,6 +14,7 @@ type Params = {
 
 export const RedisCacheKeys = {
   WALLETS: "clave:wallets",
+  SYNC_SWAP_POOLS: "syncswap:pools",
 };
 
 const baseRedisOptions = {

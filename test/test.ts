@@ -176,7 +176,7 @@ describe("ERC20Handler", () => {
     const mockDb = MockDb.createMockDb();
     const token0 = "0x367700c33ea7d4523403ca8ca790918ccb76dAb4";
     const token1 = "0x65006841486feb84570d909703ad646ddeaf0f5B";
-    const poolAdd = "0x14A7a4bea54983796086eaea935564c5f33179c5";
+    const poolAdd = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
 
     const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
       mockEventData: {

@@ -20,6 +20,7 @@ import { getOrCreateToken } from "./utils/GetTokenData";
 import { SyncswapPools } from "./ERC20Handler";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { getOrCreateClaggPool } from "./ClaggHandler";
+import { syncswapCache } from "./utils/SyncswapCache";
 
 /**
  * Handles new pool creation events from the Syncswap Factory
@@ -27,6 +28,7 @@ import { getOrCreateClaggPool } from "./ClaggHandler";
  */
 SyncswapFactory.PoolCreated.handler(async ({ event, context }) => {
   await createPool(event, context);
+  await syncswapCache.addPool(event.params.pool.toLowerCase() as Address);
   SyncswapPools.add(event.params.pool.toLowerCase() as Address);
 });
 
