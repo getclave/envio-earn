@@ -2,7 +2,6 @@ import { getContract } from "viem";
 import { client } from "./viem/Client";
 import { ERC20_Transfer_event, handlerContext } from "generated/src/Types.gen";
 import { Address } from "viem";
-import { getOrCreateToken } from "./utils/GetTokenData";
 import { AaveEarnBalance_t, AavePool_t } from "generated/src/db/Entities.gen";
 import { Aave } from "generated";
 import { walletCache } from "./utils/WalletCache";
@@ -212,12 +211,10 @@ async function getOrCreateAavePool(poolAddress: Address, context: handlerContext
       ],
     });
 
-    const createdToken = await getOrCreateToken(underlyingToken.result as Address, context);
-
     const newAavePool: AavePool_t = {
       id: poolAddress.toLowerCase(),
       address: poolAddress.toLowerCase(),
-      underlyingToken_id: createdToken.id,
+      underlyingToken: underlyingToken.result as Address,
       name: name.result as string,
       symbol: symbol.result as string,
       lastIndex: 0n,

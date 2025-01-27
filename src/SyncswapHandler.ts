@@ -16,7 +16,6 @@ import { Address, getContract } from "viem";
 import { SyncswapPool_t } from "generated/src/db/Entities.gen";
 import { SyncswapPoolABI } from "./abi/SyncswapPool";
 import { client } from "./viem/Client";
-import { getOrCreateToken } from "./utils/GetTokenData";
 import { SyncswapPools } from "./ERC20Handler";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { getOrCreateClaggPool } from "./ClaggHandler";
@@ -28,8 +27,11 @@ import { syncswapCache } from "./utils/SyncswapCache";
  */
 SyncswapFactory.PoolCreated.handler(async ({ event, context }) => {
   await createPool(event, context);
+  if (process.env.NODE_ENV == "test") {
+    SyncswapPools.add(event.params.pool.toLowerCase() as Address);
+    return;
+  }
   await syncswapCache.addPool(event.params.pool.toLowerCase() as Address);
-  SyncswapPools.add(event.params.pool.toLowerCase() as Address);
 });
 
 /**
@@ -199,16 +201,12 @@ export async function createPool(
         { ...contract, functionName: "totalSupply" },
       ],
     });
-  const [createdToken, createdToken2] = await Promise.all([
-    getOrCreateToken(event.params.token0.toLowerCase() as Address, context),
-    getOrCreateToken(event.params.token1.toLowerCase() as Address, context),
-  ]);
 
   const newSyncswapPool: SyncswapPool_t = {
     id: event.params.pool.toLowerCase(),
     address: event.params.pool.toLowerCase(),
-    underlyingToken_id: createdToken.id,
-    underlyingToken2_id: createdToken2.id,
+    underlyingToken: event.params.token0.toLowerCase(),
+    underlyingToken2: event.params.token1.toLowerCase(),
     name: name.result as string,
     symbol: symbol.result as string,
     poolType: poolType.result as bigint,

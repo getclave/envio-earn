@@ -8,7 +8,6 @@ import { ERC20_Transfer_event, handlerContext, Venus } from "generated";
 import { Address, getContract } from "viem";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
-import { getOrCreateToken } from "./utils/GetTokenData";
 import { VenusEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
 import { venusExchangeRateInterval } from "./utils/intervals";
 import { getOrCreateClaggPool } from "./ClaggHandler";
@@ -151,12 +150,10 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
       ],
     });
 
-    const createdToken = await getOrCreateToken(underlyingToken.result as Address, context);
-
     const newVenusPool: VenusPool_t = {
       id: poolAddress.toLowerCase(),
       address: poolAddress.toLowerCase(),
-      underlyingToken_id: createdToken.id,
+      underlyingToken: (underlyingToken.result as Address).toLowerCase(),
       name: name.result as string,
       symbol: symbol.result as string,
       exchangeRate: exchangeRate.result as bigint,

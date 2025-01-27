@@ -17,24 +17,15 @@ type AccountIdleBalance @index(fields: ["address", "balance"]) {
   id: ID! # User address + token address
   address: String! @index
   balance: BigInt! @index
-  token: Token! @index
+  token: String! @index
 }
 
 type HistoricalAccountIdleBalance {
   id: ID! # User address + token address + timestamp
   address: String! @index
   balance: BigInt!
-  token: Token! @index
+  token: String! @index
   timestamp: BigInt! @index
-}
-
-# UTILITIES
-
-type Token {
-  id: ID! # Token address
-  name: String
-  symbol: String
-  decimals: Int
 }
 
 # EARN
@@ -66,7 +57,7 @@ type VenusPool {
   address: String! @index
   name: String
   symbol: String
-  underlyingToken: Token
+  underlyingToken: String
   exchangeRate: BigInt!
 }
 
@@ -82,8 +73,8 @@ type SyncswapPool {
   name: String
   symbol: String
   address: String! @index
-  underlyingToken: Token
-  underlyingToken2: Token
+  underlyingToken: String
+  underlyingToken2: String
   poolType: BigInt
   token0PrecisionMultiplier: BigInt
   token1PrecisionMultiplier: BigInt
@@ -105,7 +96,7 @@ type AavePool {
   address: String! @index
   name: String
   symbol: String
-  underlyingToken: Token
+  underlyingToken: String
   lastIndex: BigInt!
 }
 

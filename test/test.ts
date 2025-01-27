@@ -22,7 +22,7 @@ describe("ERC20Handler", () => {
     id: userAddress1.toLowerCase() + tokenId.toLowerCase(),
     balance: 5n,
     address: userAddress1.toLowerCase(),
-    token_id: tokenId.toLowerCase(),
+    token: tokenId.toLowerCase(),
   };
 
   const mockDb = mockDbEmpty.entities.AccountIdleBalance.set(mockAccountIdleBalanceEntity);
@@ -173,6 +173,7 @@ describe("ERC20Handler", () => {
   });
 
   it("Syncswap should create new pool and handle user balances", async () => {
+    process.env.TEST_MODE = "syncswap";
     const mockDb = MockDb.createMockDb();
     const token0 = "0x367700c33ea7d4523403ca8ca790918ccb76dAb4";
     const token1 = "0x65006841486feb84570d909703ad646ddeaf0f5B";
@@ -194,8 +195,8 @@ describe("ERC20Handler", () => {
 
     const pool = mockDbAfterPool.entities.SyncswapPool.get(poolAdd.toLowerCase());
     assert.equal(pool?.id, poolAdd.toLowerCase(), "Pool should be created");
-    assert.equal(pool?.underlyingToken_id, token0.toLowerCase(), "Token 0 should be set");
-    assert.equal(pool?.underlyingToken2_id, token1.toLowerCase(), "Token 1 should be set");
+    assert.equal(pool?.underlyingToken, token0.toLowerCase(), "Token 0 should be set");
+    assert.equal(pool?.underlyingToken2, token1.toLowerCase(), "Token 1 should be set");
 
     const mockTx = SyncswapPool.Mint.createMockEvent({
       mockEventData: {
@@ -270,6 +271,7 @@ describe("ERC20Handler", () => {
       userAddress1.toLowerCase() + poolAdd.toLowerCase()
     );
     assert.equal(accountBalance2?.shareBalance, -100n, "Share balance should be set");
+    process.env.TEST_MODE = "default";
   });
 
   it("Clagg should handle minting and burning correctly", async () => {

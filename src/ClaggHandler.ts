@@ -1,4 +1,4 @@
-import { Account, ClaggEarnBalance, ClaggMain, handlerContext } from "generated";
+import { ClaggEarnBalance, ClaggMain, handlerContext } from "generated";
 import { Account_t, ClaggEarnBalance_t, ClaggPool_t } from "generated/src/db/Entities.gen";
 import { Address } from "viem";
 

@@ -11,7 +11,6 @@ import {
   ERC20_Transfer_event,
   handlerContext,
 } from "generated";
-import { getOrCreateToken } from "./utils/GetTokenData";
 import { walletCache } from "./utils/WalletCache";
 import { SyncswapAccountHandler } from "./SyncswapHandler";
 import { Address } from "viem";
@@ -116,7 +115,7 @@ ERC20.Transfer.handlerWithLoader({
         });
       }
 
-      if (process.env.NODE_ENV == "test") {
+      if (process.env.NODE_ENV == "test" && process.env.TEST_MODE == "syncswap") {
         syncswapPools = new Set([srcAddress.toLowerCase()]);
         loaderReturn.syncswapPools = syncswapPools;
       }
@@ -156,18 +155,17 @@ async function PlainTransferHandler(
   loaderReturn: any
 ) {
   const { claveAddresses, senderBalance, receiverBalance } = loaderReturn;
-  const generatedToken = await getOrCreateToken(event.srcAddress.toLowerCase(), context);
 
   if (claveAddresses.has(event.params.from.toLowerCase())) {
     // Update sender's balance
     let accountObject: AccountIdleBalance = {
-      id: event.params.from.toLowerCase() + generatedToken.id,
+      id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
       balance:
         senderBalance == undefined
           ? 0n - event.params.value
           : senderBalance.balance - event.params.value,
       address: event.params.from.toLowerCase(),
-      token_id: generatedToken.id,
+      token: event.srcAddress.toLowerCase(),
     };
 
     context.AccountIdleBalance.set(accountObject);
@@ -181,13 +179,13 @@ async function PlainTransferHandler(
   if (claveAddresses.has(event.params.to.toLowerCase())) {
     // Update receiver's balance
     let accountObject: AccountIdleBalance = {
-      id: event.params.to.toLowerCase() + generatedToken.id,
+      id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
       balance:
         receiverBalance == undefined
           ? event.params.value
           : event.params.value + receiverBalance.balance,
       address: event.params.to.toLowerCase(),
-      token_id: generatedToken.id,
+      token: event.srcAddress.toLowerCase(),
     };
 
     context.AccountIdleBalance.set(accountObject);
