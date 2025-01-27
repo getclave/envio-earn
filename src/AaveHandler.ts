@@ -7,6 +7,7 @@ import { Aave } from "generated";
 import { walletCache } from "./utils/WalletCache";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { getOrCreateClaggPool } from "./ClaggHandler";
+import { roundTimestamp } from "./utils/helpers";
 
 Aave.Mint.handlerWithLoader({
   loader: async ({ event, context }) => {
@@ -30,6 +31,12 @@ Aave.Mint.handlerWithLoader({
       lastIndex: event.params.index,
     });
 
+    context.HistoricalAavePool.set({
+      ...createdPool,
+      id: createdPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
+    });
+
     if (
       !claveAddresses.has(event.params.onBehalfOf.toLowerCase()) &&
       process.env.NODE_ENV !== "test"
@@ -42,12 +49,19 @@ Aave.Mint.handlerWithLoader({
       address: event.params.onBehalfOf.toLowerCase(),
     });
 
-    context.AaveEarnBalance.set({
+    const aaveEarnBalance: AaveEarnBalance_t = {
       id: event.params.onBehalfOf.toLowerCase() + createdPool.id,
       userAddress: event.params.onBehalfOf.toLowerCase(),
       aavePool_id: createdPool.id,
       userIndex: event.params.index,
       shareBalance: userBalance ? userBalance.shareBalance : 0n,
+    };
+
+    context.AaveEarnBalance.set(aaveEarnBalance);
+    context.HistoricalAaveEarnBalance.set({
+      ...aaveEarnBalance,
+      id: aaveEarnBalance.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
     });
   },
 });
@@ -74,6 +88,12 @@ Aave.Burn.handlerWithLoader({
       lastIndex: event.params.index,
     });
 
+    context.HistoricalAavePool.set({
+      ...createdPool,
+      id: createdPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
+    });
+
     if (!claveAddresses.has(event.params.from.toLowerCase()) && process.env.NODE_ENV !== "test") {
       return;
     }
@@ -83,12 +103,19 @@ Aave.Burn.handlerWithLoader({
       address: event.params.from.toLowerCase(),
     });
 
-    context.AaveEarnBalance.set({
+    const aaveEarnBalance: AaveEarnBalance_t = {
       id: event.params.from.toLowerCase() + createdPool.id,
       userAddress: event.params.from.toLowerCase(),
       aavePool_id: createdPool.id,
       userIndex: event.params.index,
       shareBalance: userBalance ? userBalance.shareBalance : 0n,
+    };
+
+    context.AaveEarnBalance.set(aaveEarnBalance);
+    context.HistoricalAaveEarnBalance.set({
+      ...aaveEarnBalance,
+      id: aaveEarnBalance.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
     });
   },
 });
@@ -110,18 +137,30 @@ export const AaveAccountHandler = async ({
 
   if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
     const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
-    context.ClaggPool.set({
+    const adjustedPool = {
       ...pool,
       totalSupply: pool.totalSupply - event.params.value,
+    };
+    context.ClaggPool.set(adjustedPool);
+    context.HistoricalClaggPool.set({
+      ...adjustedPool,
+      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
     return;
   }
 
   if (event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()) {
     const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
-    context.ClaggPool.set({
+    const adjustedPool = {
       ...pool,
       totalSupply: pool.totalSupply + event.params.value,
+    };
+    context.ClaggPool.set(adjustedPool);
+    context.HistoricalClaggPool.set({
+      ...adjustedPool,
+      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
     return;
   }
@@ -148,6 +187,11 @@ export const AaveAccountHandler = async ({
     };
 
     context.AaveEarnBalance.set(accountObject);
+    context.HistoricalAaveEarnBalance.set({
+      ...accountObject,
+      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+    });
   }
 
   if (claveAddresses.has(event.params.to.toLowerCase())) {
@@ -164,6 +208,11 @@ export const AaveAccountHandler = async ({
     };
 
     context.AaveEarnBalance.set(accountObject);
+    context.HistoricalAaveEarnBalance.set({
+      ...accountObject,
+      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+    });
   }
 };
 

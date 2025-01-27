@@ -20,7 +20,7 @@ type AccountIdleBalance @index(fields: ["address", "balance"]) {
   token: String! @index
 }
 
-type HistoricalAccountIdleBalance {
+type HistoricalAccountIdleBalance @index(fields: ["address", "timestamp"]) {
   id: ID! # User address + token address + timestamp
   address: String! @index
   balance: BigInt!
@@ -52,9 +52,27 @@ type VenusEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   venusPool: VenusPool @index
 }
 
+type HistoricalVenusEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  venusPool: VenusPool @index
+  timestamp: BigInt! @index
+}
+
 type VenusPool {
   id: ID! # Pool address
   address: String! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  exchangeRate: BigInt!
+}
+
+type HistoricalVenusPool @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
   name: String
   symbol: String
   underlyingToken: String
@@ -68,11 +86,35 @@ type SyncswapEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   syncswapPool: SyncswapPool @index
 }
 
+type HistoricalSyncswapEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  syncswapPool: SyncswapPool @index
+  timestamp: BigInt! @index
+}
+
 type SyncswapPool {
   id: ID! # Pool address
   name: String
   symbol: String
   address: String! @index
+  underlyingToken: String
+  underlyingToken2: String
+  poolType: BigInt
+  token0PrecisionMultiplier: BigInt
+  token1PrecisionMultiplier: BigInt
+  reserve0: BigInt!
+  reserve1: BigInt!
+  totalSupply: BigInt!
+}
+
+type HistoricalSyncswapPool @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  name: String
+  symbol: String
   underlyingToken: String
   underlyingToken2: String
   poolType: BigInt
@@ -91,9 +133,27 @@ type AaveEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   aavePool: AavePool @index
 }
 
+type HistoricalAaveEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  aavePool: AavePool @index
+  timestamp: BigInt! @index
+}
+
 type AavePool {
   id: ID! # Pool address
   address: String! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  lastIndex: BigInt!
+}
+
+type HistoricalAavePool @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
   name: String
   symbol: String
   underlyingToken: String
@@ -109,10 +169,26 @@ type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   claggPool: ClaggPool @index
 }
 
+type HistoricalClaggEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  claggPool: ClaggPool @index
+  timestamp: BigInt! @index
+}
+
 type ClaggPool {
   id: ID! # Pool address
   address: String! @index
   totalShares: BigInt!
   totalSupply: BigInt!
   poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+}
+
+type HistoricalClaggPool @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  totalShares: BigInt!
+  totalSupply: BigInt!
 }

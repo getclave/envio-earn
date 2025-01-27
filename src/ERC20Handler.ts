@@ -20,6 +20,7 @@ import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { AavePoolAddresses } from "./constants/AavePools";
 import { AaveAccountHandler } from "./AaveHandler";
 import { syncswapCache } from "./utils/SyncswapCache";
+import { roundTimestamp } from "./utils/helpers";
 
 /**
  * Set of Syncswap pool addresses for quick lookup
@@ -171,8 +172,8 @@ async function PlainTransferHandler(
     context.AccountIdleBalance.set(accountObject);
     context.HistoricalAccountIdleBalance.set({
       ...accountObject,
-      id: accountObject.id + event.block.timestamp.toString(),
-      timestamp: BigInt(event.block.timestamp),
+      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
     });
   }
 
@@ -191,8 +192,8 @@ async function PlainTransferHandler(
     context.AccountIdleBalance.set(accountObject);
     context.HistoricalAccountIdleBalance.set({
       ...accountObject,
-      id: accountObject.id + event.block.timestamp.toString(),
-      timestamp: BigInt(event.block.timestamp),
+      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
     });
   }
 }

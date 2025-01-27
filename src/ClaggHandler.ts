@@ -1,6 +1,7 @@
 import { ClaggEarnBalance, ClaggMain, handlerContext } from "generated";
 import { Account_t, ClaggEarnBalance_t, ClaggPool_t } from "generated/src/db/Entities.gen";
 import { Address } from "viem";
+import { roundTimestamp } from "./utils/helpers";
 
 /**
  * Handles deposit events for Clagg pools
@@ -23,10 +24,16 @@ ClaggMain.Deposit.handlerWithLoader({
   handler: async ({ event, context, loaderReturn }) => {
     const { userBalance } = loaderReturn;
     const pool = await getOrCreateClaggPool(event.params.pool.toLowerCase() as Address, context);
-    // Update pool total shares
-    context.ClaggPool.set({
+    const adjustedPool = {
       ...pool,
       totalShares: pool.totalShares + event.params.shares,
+    };
+    // Update pool total shares
+    context.ClaggPool.set(adjustedPool);
+    context.HistoricalClaggPool.set({
+      ...adjustedPool,
+      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
 
     const createdUserBalance: ClaggEarnBalance_t = {
@@ -45,6 +52,11 @@ ClaggMain.Deposit.handlerWithLoader({
     };
 
     context.ClaggEarnBalance.set(createdUserBalance);
+    context.HistoricalClaggEarnBalance.set({
+      ...createdUserBalance,
+      id: createdUserBalance.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+    });
 
     const createdUser: Account_t = {
       id: event.params.user.toLowerCase(),
@@ -76,11 +88,16 @@ ClaggMain.Withdraw.handlerWithLoader({
   handler: async ({ event, context, loaderReturn }) => {
     const { userBalance } = loaderReturn;
     const pool = await getOrCreateClaggPool(event.params.pool.toLowerCase() as Address, context);
-
-    // Update pool total shares
-    context.ClaggPool.set({
+    const adjustedPool = {
       ...pool,
       totalShares: pool.totalShares - event.params.shares,
+    };
+    // Update pool total shares
+    context.ClaggPool.set(adjustedPool);
+    context.HistoricalClaggPool.set({
+      ...adjustedPool,
+      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
 
     const createdUserBalance: ClaggEarnBalance_t = {
@@ -99,6 +116,11 @@ ClaggMain.Withdraw.handlerWithLoader({
     };
 
     context.ClaggEarnBalance.set(createdUserBalance);
+    context.HistoricalClaggEarnBalance.set({
+      ...createdUserBalance,
+      id: createdUserBalance.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+    });
 
     const createdUser: Account_t = {
       id: event.params.user.toLowerCase(),

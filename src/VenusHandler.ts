@@ -12,34 +12,55 @@ import { VenusEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
 import { venusExchangeRateInterval } from "./utils/intervals";
 import { getOrCreateClaggPool } from "./ClaggHandler";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
+import { roundTimestamp } from "./utils/helpers";
 
 Venus.AccrueInterest.handler(async ({ context, event }) => {
   if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+    await setNewExchangeRate(
+      event.srcAddress.toLowerCase() as Address,
+      context,
+      event.block.timestamp
+    );
   }
 });
 
 Venus.Borrow.handler(async ({ context, event }) => {
   if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+    await setNewExchangeRate(
+      event.srcAddress.toLowerCase() as Address,
+      context,
+      event.block.timestamp
+    );
   }
 });
 
 Venus.RepayBorrow.handler(async ({ context, event }) => {
   if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+    await setNewExchangeRate(
+      event.srcAddress.toLowerCase() as Address,
+      context,
+      event.block.timestamp
+    );
   }
 });
 
 Venus.BadDebtIncreased.handler(async ({ context, event }) => {
   if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+    await setNewExchangeRate(
+      event.srcAddress.toLowerCase() as Address,
+      context,
+      event.block.timestamp
+    );
   }
 });
 
 Venus.BadDebtRecovered.handler(async ({ context, event }) => {
   if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(event.srcAddress.toLowerCase() as Address, context);
+    await setNewExchangeRate(
+      event.srcAddress.toLowerCase() as Address,
+      context,
+      event.block.timestamp
+    );
   }
 });
 
@@ -68,18 +89,32 @@ export const VenusAccountHandler = async ({
   if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
     const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
 
-    context.ClaggPool.set({
+    const adjustedPool = {
       ...pool,
       totalSupply: pool.totalSupply - event.params.value,
+    };
+
+    context.ClaggPool.set(adjustedPool);
+    context.HistoricalClaggPool.set({
+      ...adjustedPool,
+      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
     return;
   }
 
   if (event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()) {
     const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
-    context.ClaggPool.set({
+    const adjustedPool = {
       ...pool,
       totalSupply: pool.totalSupply + event.params.value,
+    };
+
+    context.ClaggPool.set(adjustedPool);
+    context.HistoricalClaggPool.set({
+      ...adjustedPool,
+      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
     return;
   }
@@ -104,6 +139,11 @@ export const VenusAccountHandler = async ({
     };
 
     context.VenusEarnBalance.set(accountObject);
+    context.HistoricalVenusEarnBalance.set({
+      ...accountObject,
+      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+    });
   }
 
   if (claveAddresses.has(event.params.to.toLowerCase())) {
@@ -119,6 +159,11 @@ export const VenusAccountHandler = async ({
     };
 
     context.VenusEarnBalance.set(accountObject);
+    context.HistoricalVenusEarnBalance.set({
+      ...accountObject,
+      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+    });
   }
 };
 
@@ -170,7 +215,11 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
   }
 }
 
-async function setNewExchangeRate(poolAddress: Address, context: handlerContext) {
+async function setNewExchangeRate(
+  poolAddress: Address,
+  context: handlerContext,
+  timestamp: number
+) {
   const contract = getContract({
     address: poolAddress.toLowerCase() as Address,
     abi: VenusPoolABI,
@@ -183,8 +232,16 @@ async function setNewExchangeRate(poolAddress: Address, context: handlerContext)
 
   const pool = await getOrCreateVenusPool(poolAddress, context);
 
-  context.VenusPool.set({
+  const adjustedPool = {
     ...pool,
     exchangeRate: exchangeRate.result as bigint,
+  };
+
+  context.VenusPool.set(adjustedPool);
+
+  context.HistoricalVenusPool.set({
+    ...adjustedPool,
+    id: adjustedPool.id + roundTimestamp(timestamp),
+    timestamp: BigInt(roundTimestamp(timestamp)),
   });
 }

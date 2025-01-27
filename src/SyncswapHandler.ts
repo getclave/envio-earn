@@ -20,6 +20,7 @@ import { SyncswapPools } from "./ERC20Handler";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { getOrCreateClaggPool } from "./ClaggHandler";
 import { syncswapCache } from "./utils/SyncswapCache";
+import { roundTimestamp } from "./utils/helpers";
 
 /**
  * Handles new pool creation events from the Syncswap Factory
@@ -53,10 +54,17 @@ SyncswapPool.Sync.handler(async ({ event, context }) => {
     event.srcAddress.toLowerCase() as Address
   )) as SyncswapPool_t;
 
-  context.SyncswapPool.set({
+  const adjustedPool = {
     ...syncPool,
     reserve0: event.params.reserve0,
     reserve1: event.params.reserve1,
+  };
+
+  context.SyncswapPool.set(adjustedPool);
+  context.HistoricalSyncswapPool.set({
+    ...adjustedPool,
+    id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+    timestamp: BigInt(roundTimestamp(event.block.timestamp)),
   });
 });
 
@@ -68,9 +76,17 @@ SyncswapPool.Mint.handler(async ({ event, context }) => {
   const syncPool = (await context.SyncswapPool.get(
     event.srcAddress.toLowerCase() as Address
   )) as SyncswapPool_t;
-  context.SyncswapPool.set({
+
+  const adjustedPool = {
     ...syncPool,
     totalSupply: syncPool.totalSupply + event.params.liquidity,
+  };
+
+  context.SyncswapPool.set(adjustedPool);
+  context.HistoricalSyncswapPool.set({
+    ...adjustedPool,
+    id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+    timestamp: BigInt(roundTimestamp(event.block.timestamp)),
   });
 });
 
@@ -83,9 +99,16 @@ SyncswapPool.Burn.handler(async ({ event, context }) => {
     event.srcAddress.toLowerCase() as Address
   )) as SyncswapPool_t;
 
-  context.SyncswapPool.set({
+  const adjustedPool = {
     ...syncPool,
     totalSupply: syncPool.totalSupply - event.params.liquidity,
+  };
+
+  context.SyncswapPool.set(adjustedPool);
+  context.HistoricalSyncswapPool.set({
+    ...adjustedPool,
+    id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+    timestamp: BigInt(roundTimestamp(event.block.timestamp)),
   });
 });
 
@@ -113,9 +136,16 @@ export const SyncswapAccountHandler = async ({
     if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
       const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
 
-      context.ClaggPool.set({
+      const adjustedPool = {
         ...pool,
         totalSupply: pool.totalSupply - event.params.value,
+      };
+
+      context.ClaggPool.set(adjustedPool);
+      context.HistoricalClaggPool.set({
+        ...adjustedPool,
+        id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp)),
       });
       return;
     }
@@ -123,9 +153,16 @@ export const SyncswapAccountHandler = async ({
     if (event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()) {
       const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
 
-      context.ClaggPool.set({
+      const adjustedPool = {
         ...pool,
         totalSupply: pool.totalSupply + event.params.value,
+      };
+
+      context.ClaggPool.set(adjustedPool);
+      context.HistoricalClaggPool.set({
+        ...adjustedPool,
+        id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp)),
       });
       return;
     }
@@ -152,6 +189,11 @@ export const SyncswapAccountHandler = async ({
       };
 
       context.SyncswapEarnBalance.set(accountObject);
+      context.HistoricalSyncswapEarnBalance.set({
+        ...accountObject,
+        id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+      });
     }
 
     if (claveAddresses.has(toAddress)) {
@@ -167,6 +209,11 @@ export const SyncswapAccountHandler = async ({
       };
 
       context.SyncswapEarnBalance.set(accountObject);
+      context.HistoricalSyncswapEarnBalance.set({
+        ...accountObject,
+        id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+      });
     }
   } catch (error) {
     context.log.error(`Error in SyncswapAccountHandler: ${error}`);
