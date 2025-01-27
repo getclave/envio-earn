@@ -79,6 +79,7 @@ class WalletCache {
    * Synchronizes the local cache with the persistent storage
    */
   private async updateInMemoryCache() {
+    console.log("updating in memory cache");
     const members = await this.redisCommand!.sMembers(this.CACHE_KEY);
     this.inMemoryCache = new Set(members);
   }
@@ -92,6 +93,9 @@ class WalletCache {
 
     try {
       await this.redisSub!.subscribe(keyspaceChannel, (message) => {
+        if (message !== "sadd") {
+          return;
+        }
         this.updateInMemoryCache().catch((error) => {
           console.error("Failed to update in-memory cache:", error);
         });

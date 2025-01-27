@@ -73,6 +73,7 @@ class SyncswapCache {
   }
 
   private async updateInMemoryCache() {
+    console.log("updating in memory cache");
     const members = await this.redisCommand!.sMembers(this.CACHE_KEY);
     this.inMemoryCache = new Set(members);
   }
@@ -92,10 +93,14 @@ class SyncswapCache {
 
     try {
       await this.redisSub!.subscribe(keyspaceChannel, (message) => {
+        if (message !== "sadd") {
+          return;
+        }
         this.updateInMemoryCache().catch((error) => {
           console.error("Failed to update in-memory cache:", error);
         });
       });
+      console.log(`Subscribed to ${keyspaceChannel}`);
     } catch (error) {
       console.error("Failed to subscribe to keyspace events:", error);
     }
