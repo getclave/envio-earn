@@ -36,6 +36,11 @@ ClaggMain.Deposit.handlerWithLoader({
         userBalance == undefined
           ? event.params.shares
           : userBalance.shareBalance + event.params.shares,
+      totalDeposits:
+        userBalance == undefined
+          ? event.params.amount
+          : userBalance.totalDeposits + event.params.amount,
+      totalWithdrawals: userBalance == undefined ? 0n : userBalance.totalWithdrawals,
       claggPool_id: event.params.pool.toLowerCase(),
     };
 
@@ -85,6 +90,11 @@ ClaggMain.Withdraw.handlerWithLoader({
         userBalance == undefined
           ? 0n - event.params.shares
           : userBalance.shareBalance - event.params.shares,
+      totalDeposits: userBalance == undefined ? 0n : userBalance.totalDeposits,
+      totalWithdrawals:
+        userBalance == undefined
+          ? event.params.amount
+          : userBalance.totalWithdrawals + event.params.amount,
       claggPool_id: event.params.pool.toLowerCase(),
     };
 

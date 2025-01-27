@@ -113,6 +113,8 @@ type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
+  totalDeposits: BigInt! # In terms of underlying token
+  totalWithdrawals: BigInt! # In terms of underlying token
   claggPool: ClaggPool @index
 }
 
