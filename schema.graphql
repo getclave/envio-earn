@@ -173,6 +173,8 @@ type HistoricalClaggEarnBalance @index(fields: ["userAddress", "timestamp"]) {
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
+  totalDeposits: BigInt! # In terms of underlying token
+  totalWithdrawals: BigInt! # In terms of underlying token
   claggPool: ClaggPool @index
   timestamp: BigInt! @index
 }
