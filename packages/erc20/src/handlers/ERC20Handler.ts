@@ -4,28 +4,14 @@
  * Manages token balances, account tracking, and protocol-specific logic for the Clave indexer.
  */
 
+import { walletCache, ClaggMainAddress, roundTimestamp } from "@clave/shared";
 import {
   ERC20,
   AccountIdleBalance,
   Account,
   ERC20_Transfer_event,
   handlerContext,
-} from "generated";
-import { walletCache } from "./utils/WalletCache";
-import { SyncswapAccountHandler } from "./SyncswapHandler";
-import { Address } from "viem";
-import { VenusPoolAddresses } from "./constants/VenusPools";
-import { VenusAccountHandler } from "./VenusHandler";
-import { ClaggMainAddress } from "./constants/ClaggAddresses";
-import { AavePoolAddresses } from "./constants/AavePools";
-import { AaveAccountHandler } from "./AaveHandler";
-import { syncswapCache } from "./utils/SyncswapCache";
-import { roundTimestamp } from "./utils/helpers";
-
-/**
- * Set of Syncswap pool addresses for quick lookup
- */
-export const SyncswapPools = new Set<Address>();
+} from "../../generated";
 
 /**
  * Main handler for all ERC20 Transfer events
@@ -37,35 +23,27 @@ ERC20.Transfer.handlerWithLoader({
    * Reduces database calls by batching queries
    */
   loader: async ({ event, context }) => {
-    const [
-      senderBalance,
-      receiverBalance,
-      claveAddresses,
-      senderAccount,
-      receiverAccount,
-      syncswapPools,
-    ] = await Promise.all([
-      context.AccountIdleBalance.get(
-        event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
-      ),
-      context.AccountIdleBalance.get(
-        event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
-      ),
-      walletCache.bulkCheckClaveWallets([
-        event.params.from.toLowerCase(),
-        event.params.to.toLowerCase(),
-      ]),
-      context.Account.get(event.params.from.toLowerCase()),
-      context.Account.get(event.params.to.toLowerCase()),
-      syncswapCache.bulkCheckSyncswapPools([event.srcAddress.toLowerCase()]),
-    ]);
+    const [senderBalance, receiverBalance, claveAddresses, senderAccount, receiverAccount] =
+      await Promise.all([
+        context.AccountIdleBalance.get(
+          event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
+        ),
+        context.AccountIdleBalance.get(
+          event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
+        ),
+        walletCache.bulkCheckClaveWallets([
+          event.params.from.toLowerCase(),
+          event.params.to.toLowerCase(),
+        ]),
+        context.Account.get(event.params.from.toLowerCase()),
+        context.Account.get(event.params.to.toLowerCase()),
+      ]);
     return {
       senderBalance,
       receiverBalance,
       claveAddresses,
       senderAccount,
       receiverAccount,
-      syncswapPools,
     };
   },
 
@@ -75,11 +53,10 @@ ERC20.Transfer.handlerWithLoader({
    */
   handler: async ({ event, context, loaderReturn }) => {
     try {
-      let { claveAddresses, senderAccount, receiverAccount, syncswapPools } = loaderReturn as {
+      let { claveAddresses, senderAccount, receiverAccount } = loaderReturn as {
         claveAddresses: Set<string>;
         senderAccount: Account;
         receiverAccount: Account;
-        syncswapPools: Set<string>;
       };
 
       if (event.params.from === event.params.to) {
@@ -99,7 +76,6 @@ ERC20.Transfer.handlerWithLoader({
 
       const fromAddress = event.params.from.toLowerCase();
       const toAddress = event.params.to.toLowerCase();
-      const srcAddress = event.srcAddress.toLowerCase() as Address;
 
       // Create accounts for new Clave users
       if (!senderAccount && claveAddresses.has(fromAddress)) {
@@ -114,23 +90,6 @@ ERC20.Transfer.handlerWithLoader({
           id: toAddress,
           address: toAddress,
         });
-      }
-
-      if (process.env.NODE_ENV == "test" && process.env.TEST_MODE == "syncswap") {
-        syncswapPools = new Set([srcAddress.toLowerCase()]);
-        loaderReturn.syncswapPools = syncswapPools;
-      }
-
-      if (syncswapPools.has(srcAddress.toLowerCase())) {
-        return await SyncswapAccountHandler({ event, context, loaderReturn });
-      }
-
-      if (VenusPoolAddresses.includes(srcAddress.toLowerCase() as Address)) {
-        return await VenusAccountHandler({ event, context, loaderReturn });
-      }
-
-      if (AavePoolAddresses.includes(srcAddress.toLowerCase() as Address)) {
-        return await AaveAccountHandler({ event, context, loaderReturn });
       }
 
       await PlainTransferHandler(event, context, loaderReturn);

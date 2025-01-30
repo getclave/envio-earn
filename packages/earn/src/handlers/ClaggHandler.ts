@@ -1,7 +1,6 @@
-import { ClaggEarnBalance, ClaggMain, handlerContext } from "generated";
-import { Account_t, ClaggEarnBalance_t, ClaggPool_t } from "generated/src/db/Entities.gen";
 import { Address } from "viem";
-import { roundTimestamp } from "./utils/helpers";
+import { roundTimestamp } from "@clave/shared/utils/helpers";
+import { ClaggEarnBalance, ClaggMain, handlerContext, ClaggPool, Account } from "../../generated";
 
 /**
  * Handles deposit events for Clagg pools
@@ -36,7 +35,7 @@ ClaggMain.Deposit.handlerWithLoader({
       timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
 
-    const createdUserBalance: ClaggEarnBalance_t = {
+    const createdUserBalance: ClaggEarnBalance = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
       userAddress: event.params.user.toLowerCase(),
       shareBalance:
@@ -58,7 +57,7 @@ ClaggMain.Deposit.handlerWithLoader({
       timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
     });
 
-    const createdUser: Account_t = {
+    const createdUser: Account = {
       id: event.params.user.toLowerCase(),
       address: event.params.user.toLowerCase(),
     };
@@ -100,7 +99,7 @@ ClaggMain.Withdraw.handlerWithLoader({
       timestamp: BigInt(roundTimestamp(event.block.timestamp)),
     });
 
-    const createdUserBalance: ClaggEarnBalance_t = {
+    const createdUserBalance: ClaggEarnBalance = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
       userAddress: event.params.user.toLowerCase(),
       shareBalance:
@@ -122,7 +121,7 @@ ClaggMain.Withdraw.handlerWithLoader({
       timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
     });
 
-    const createdUser: Account_t = {
+    const createdUser: Account = {
       id: event.params.user.toLowerCase(),
       address: event.params.user.toLowerCase(),
     };
@@ -138,14 +137,14 @@ ClaggMain.Withdraw.handlerWithLoader({
 export async function getOrCreateClaggPool(
   poolAddress: Address,
   context: handlerContext
-): Promise<ClaggPool_t> {
+): Promise<ClaggPool> {
   const pool = await context.ClaggPool.get(poolAddress.toLowerCase());
 
   if (pool != undefined) {
     return pool;
   }
 
-  const newClaggPool: ClaggPool_t = {
+  const newClaggPool: ClaggPool = {
     id: poolAddress.toLowerCase(),
     address: poolAddress.toLowerCase(),
     totalShares: 0n,

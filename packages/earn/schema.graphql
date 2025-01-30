@@ -3,12 +3,10 @@
 type Account {
   id: ID! # User address
   address: String! @index
-  idleBalances: [AccountIdleBalance!]! @derivedFrom(field: "address")
   syncswapEarnBalances: [SyncswapEarnBalance!]! @derivedFrom(field: "userAddress")
   venusEarnBalances: [VenusEarnBalance!]! @derivedFrom(field: "userAddress")
   aaveEarnBalances: [AaveEarnBalance!]! @derivedFrom(field: "userAddress")
   claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "userAddress")
-  historicalIdleBalances: [HistoricalAccountIdleBalance!]! @derivedFrom(field: "address")
 }
 
 # IDLE

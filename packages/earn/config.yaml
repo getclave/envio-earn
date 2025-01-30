@@ -1,16 +1,12 @@
 # yaml-language-server: $schema=./node_modules/envio/evm.schema.json
-name: clave-indexer
-description: Clave Balances Indexer
+name: clave-earn-indexer
+description: Clave Earn Balances Indexer
 networks:
   - id: 324
     start_block: 24805087
     contracts:
-      - name: ERC20 # Both for ERC20Transfer and Venus
-        handler: src/ERC20Handler.ts
-        events:
-          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: SyncswapFactory
-        handler: src/SyncswapHandler.ts
+        handler: src/handlers/SyncswapHandler.ts
         address:
           - 0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb
           - 0x5b9f21d407F35b10CbfDDca17D5D84b129356ea3
@@ -21,22 +17,14 @@ networks:
         events:
           - event: "PoolCreated(address indexed token0, address indexed token1, address pool)"
       - name: SyncswapPool
-        handler: src/SyncswapHandler.ts
+        handler: src/handlers/SyncswapHandler.ts
         events:
           - event: "Sync(uint reserve0, uint reserve1)"
-            field_selection:
-              transaction_fields:
-                - "from"
           - event: "Mint(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
-            field_selection:
-              transaction_fields:
-                - "from"
           - event: "Burn(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
-            field_selection:
-              transaction_fields:
-                - "from"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: Aave
-        handler: src/AaveHandler.ts
+        handler: src/handlers/AaveHandler.ts
         address:
           - 0xE977F9B2a5ccf0457870a67231F23BE4DaecfbDb
           - 0xC48574bc5358c967d9447e7Df70230Fdb469e4E7
@@ -46,8 +34,9 @@ networks:
         events:
           - event: "Mint(address indexed caller, address indexed onBehalfOf, uint256 value, uint256 balanceIncrease, uint256 index)"
           - event: "Burn(address indexed from, address indexed target, uint256 value, uint256 balanceIncrease, uint256 index)"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: Venus
-        handler: src/VenusHandler.ts
+        handler: src/handlers/VenusHandler.ts
         address:
           - 0x84064c058f2efea4ab648bb6bd7e40f83ffde39a
           - 0x1af23bd57c62a99c59ad48236553d0dd11e49d2d
@@ -61,16 +50,12 @@ networks:
           - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
           - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
           - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: ClaggMain
-        handler: src/ClaggHandler.ts
+        handler: src/handlers/ClaggHandler.ts
         address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
         events:
           - event: "Deposit(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
           - event: "Withdraw(address indexed user, address indexed pool, uint256 amount, uint256 shares)"
 
 rollback_on_reorg: false
-#* 9767 syncswap first block
-#* 43552171 venus first block
-#* 24805087 clave first block
-#* 52887531 clagg first block
-#* 44671523 aave first block
