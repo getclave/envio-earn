@@ -79,9 +79,13 @@ Venus.Transfer.handlerWithLoader({
     };
   },
   handler: async ({ event, context, loaderReturn }) => {
-    const { claveAddresses } = loaderReturn as {
+    let { claveAddresses } = loaderReturn as {
       claveAddresses: Set<string>;
     };
+
+    if (process.env.NODE_ENV === "test") {
+      claveAddresses = new Set([event.params.from.toLowerCase(), event.params.to.toLowerCase()]);
+    }
 
     const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
 

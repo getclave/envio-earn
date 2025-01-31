@@ -1,5 +1,5 @@
 {
-  "name": "envio-indexer",
+  "name": "@clave/earn",
   "version": "0.1.0",
   "scripts": {
     "clean": "tsc --clean",
@@ -12,19 +12,17 @@
     "start": "ts-node generated/src/Index.bs.js"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.11",    
+    "@types/chai": "4.3.11",
     "@types/mocha": "10.0.6",
     "@types/node": "20.8.8",
-    "ts-mocha": "^10.0.0",
+    "ts-mocha": "10.0.0",
     "ts-node": "10.9.1",
     "typescript": "5.2.2",
     "chai": "4.3.10",
     "mocha": "10.2.0"
   },
   "dependencies": {
+    "@clave/shared": "workspace:*",
     "envio": "2.11.6"
-  },
-  "optionalDependencies": {
-    "generated": "./generated"
   }
 }

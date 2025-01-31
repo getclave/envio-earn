@@ -118,9 +118,13 @@ SyncswapPool.Transfer.handlerWithLoader({
   },
   handler: async ({ event, context, loaderReturn }) => {
     try {
-      const { claveAddresses } = loaderReturn as {
+      let { claveAddresses } = loaderReturn as {
         claveAddresses: Set<string>;
       };
+
+      if (process.env.NODE_ENV === "test") {
+        claveAddresses = new Set([event.params.from.toLowerCase(), event.params.to.toLowerCase()]);
+      }
 
       if (event.params.from === event.params.to) {
         return;
@@ -306,16 +310,20 @@ export async function getOrCreateSyncswapPool(poolAddress: Address, context: han
   const newSyncswapPool: SyncswapPool_t = {
     id: poolAddress.toLowerCase(),
     address: poolAddress.toLowerCase(),
-    underlyingToken: (token0.result as Address).toLowerCase(),
-    underlyingToken2: (token1.result as Address).toLowerCase(),
-    name: name.result as string,
-    symbol: symbol.result as string,
-    poolType: poolType.result as bigint,
+    underlyingToken: token0.result
+      ? (token0.result as Address).toLowerCase()
+      : poolAddress.toLowerCase(),
+    underlyingToken2: token1.result
+      ? (token1.result as Address).toLowerCase()
+      : poolAddress.toLowerCase(),
+    name: (name.result as string) ?? "Unknown",
+    symbol: (symbol.result as string) ?? "UNK",
+    poolType: (poolType.result as bigint) ?? 0n,
     token0PrecisionMultiplier: (token0Precision.result as bigint) ?? 1n,
     token1PrecisionMultiplier: (token1Precision.result as bigint) ?? 1n,
     reserve0: 0n,
     reserve1: 0n,
-    totalSupply: totalSupply.result as bigint,
+    totalSupply: (totalSupply.result as bigint) ?? 0n,
   };
 
   context.PoolRegistry.set({

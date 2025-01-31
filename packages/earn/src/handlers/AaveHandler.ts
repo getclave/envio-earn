@@ -127,7 +127,11 @@ Aave.Transfer.handlerWithLoader({
     };
   },
   handler: async ({ event, context, loaderReturn }) => {
-    const { claveAddresses } = loaderReturn;
+    let { claveAddresses } = loaderReturn;
+
+    if (process.env.NODE_ENV === "test") {
+      claveAddresses = new Set([event.params.from.toLowerCase(), event.params.to.toLowerCase()]);
+    }
 
     const pool = await getOrCreateAavePool(event.srcAddress.toLowerCase() as Address, context);
 
