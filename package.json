@@ -7,6 +7,11 @@
       "shared"
     ]
   },
+  "scripts": {
+    "codegen": "pnpm --filter \"@clave/earn\" codegen && pnpm --filter \"@clave/erc20\" codegen",
+    "test": "pnpm codegen && pnpm --filter \"@clave/earn\" test && pnpm --filter \"@clave/erc20\" test",
+    "clean": "rm -rf node_modules packages/*/node_modules pnpm-lock.yaml && pnpm install"
+  },
   "dependencies": {
     "@clave/shared": "workspace:*",
     "@clave/earn": "workspace:*",

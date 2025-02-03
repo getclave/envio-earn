@@ -9,23 +9,6 @@ type Account {
   claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "userAddress")
 }
 
-# IDLE
-
-type AccountIdleBalance @index(fields: ["address", "balance"]) {
-  id: ID! # User address + token address
-  address: String! @index
-  balance: BigInt! @index
-  token: String! @index
-}
-
-type HistoricalAccountIdleBalance @index(fields: ["address", "timestamp"]) {
-  id: ID! # User address + token address + timestamp
-  address: String! @index
-  balance: BigInt!
-  token: String! @index
-  timestamp: BigInt! @index
-}
-
 # EARN
 
 enum Protocol {
@@ -135,6 +118,7 @@ type HistoricalAaveEarnBalance @index(fields: ["userAddress", "timestamp"]) {
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
+  userIndex: BigInt!
   aavePool: AavePool @index
   timestamp: BigInt! @index
 }

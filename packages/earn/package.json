@@ -6,7 +6,8 @@
     "build": "tsc --build",
     "watch": "tsc --watch",
     "mocha": "ts-mocha test/**/*.ts",
-    "codegen": "envio codegen",
+    "fix-paths": "node fix-paths.js",
+    "codegen": "envio codegen && pnpm fix-paths",
     "dev": "envio dev",
     "test": "pnpm mocha",
     "start": "ts-node generated/src/Index.bs.js"
