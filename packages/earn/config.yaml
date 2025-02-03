@@ -3,7 +3,7 @@ name: clave-earn-indexer
 description: Clave Earn Balances Indexer
 networks:
   - id: 324
-    start_block: 24805087
+    start_block: 9000
     contracts:
       - name: SyncswapFactory
         handler: src/handlers/SyncswapHandler.ts
