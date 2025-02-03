@@ -9,6 +9,11 @@ type Account {
   aaveEarnBalances: [AaveEarnBalance!]! @derivedFrom(field: "userAddress")
   claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "userAddress")
   historicalIdleBalances: [HistoricalAccountIdleBalance!]! @derivedFrom(field: "address")
+  historicalSyncswapEarnBalances: [HistoricalSyncswapEarnBalance!]!
+    @derivedFrom(field: "userAddress")
+  historicalVenusEarnBalances: [HistoricalVenusEarnBalance!]! @derivedFrom(field: "userAddress")
+  historicalAaveEarnBalances: [HistoricalAaveEarnBalance!]! @derivedFrom(field: "userAddress")
+  historicalClaggEarnBalances: [HistoricalClaggEarnBalance!]! @derivedFrom(field: "userAddress")
 }
 
 # IDLE
@@ -138,6 +143,7 @@ type HistoricalAaveEarnBalance @index(fields: ["userAddress", "timestamp"]) {
   userAddress: String! @index
   shareBalance: BigInt!
   aavePool: AavePool @index
+  userIndex: BigInt!
   timestamp: BigInt! @index
 }
 
