@@ -3,34 +3,15 @@
 type Account {
   id: ID! # User address
   address: String! @index
-  idleBalances: [AccountIdleBalance!]! @derivedFrom(field: "address")
   syncswapEarnBalances: [SyncswapEarnBalance!]! @derivedFrom(field: "userAddress")
   venusEarnBalances: [VenusEarnBalance!]! @derivedFrom(field: "userAddress")
   aaveEarnBalances: [AaveEarnBalance!]! @derivedFrom(field: "userAddress")
   claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "userAddress")
-  historicalIdleBalances: [HistoricalAccountIdleBalance!]! @derivedFrom(field: "address")
   historicalSyncswapEarnBalances: [HistoricalSyncswapEarnBalance!]!
     @derivedFrom(field: "userAddress")
   historicalVenusEarnBalances: [HistoricalVenusEarnBalance!]! @derivedFrom(field: "userAddress")
   historicalAaveEarnBalances: [HistoricalAaveEarnBalance!]! @derivedFrom(field: "userAddress")
   historicalClaggEarnBalances: [HistoricalClaggEarnBalance!]! @derivedFrom(field: "userAddress")
-}
-
-# IDLE
-
-type AccountIdleBalance @index(fields: ["address", "balance"]) {
-  id: ID! # User address + token address
-  address: String! @index
-  balance: BigInt! @index
-  token: String! @index
-}
-
-type HistoricalAccountIdleBalance @index(fields: ["address", "timestamp"]) {
-  id: ID! # User address + token address + timestamp
-  address: String! @index
-  balance: BigInt!
-  token: String! @index
-  timestamp: BigInt! @index
 }
 
 # EARN

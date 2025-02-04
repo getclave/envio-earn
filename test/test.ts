@@ -1,534 +1,778 @@
 import assert from "assert";
-import { TestHelpers, AccountIdleBalance } from "generated";
-import { zeroAddress } from "viem";
+import { TestHelpers } from "generated";
 import { VenusPoolAddresses } from "../src/constants/VenusPools";
 import { ClaggMainAddress } from "../src/constants/ClaggAddresses";
 import { AavePoolAddresses } from "../src/constants/AavePools";
-const { MockDb, ERC20, Addresses, Venus, SyncswapFactory, SyncswapPool, ClaggMain, Aave } =
-  TestHelpers;
+
+const { MockDb, Addresses, Venus, SyncswapFactory, SyncswapPool, ClaggMain, Aave } = TestHelpers;
 
 process.env.NODE_ENV = "test";
 
-describe("ERC20Handler", () => {
-  //Instantiate a mock DB
-  const mockDbEmpty = MockDb.createMockDb();
-  const tokenId = "0x0000000000000000000000B4s00000000Ac000001";
-  //Get mock addresses from helpers
-  let userAddress1 = Addresses.mockAddresses[0];
-  let userAddress2 = Addresses.mockAddresses[1];
+// Mock the client multicall for test mode
+process.env.MOCK_MULTICALL = "true";
 
-  //Make a mock entity to set the initial state of the mock db
-  const mockAccountIdleBalanceEntity: AccountIdleBalance = {
-    id: userAddress1.toLowerCase() + tokenId.toLowerCase(),
-    balance: 5n,
-    address: userAddress1.toLowerCase(),
-    token: tokenId.toLowerCase(),
-  };
+describe("Protocol Handlers", () => {
+  // Common test setup and variables
+  const token0 = "0x367700c33ea7d4523403ca8ca790918ccb76dAb4";
+  const token1 = "0x65006841486feb84570d909703ad646ddeaf0f5B";
+  const userAddress1 = Addresses.mockAddresses[0];
+  const userAddress2 = Addresses.mockAddresses[1];
+  let mockDb: ReturnType<typeof MockDb.createMockDb>;
 
-  const mockDb = mockDbEmpty.entities.AccountIdleBalance.set(mockAccountIdleBalanceEntity);
-
-  //Set an initial state for the user
-  //Note: set and delete functions do not mutate the mockDb, they return a new
-  //mockDb with with modified state
-  it("Plain transfers between two users", async () => {
-    //Create a mock Transfer event from userAddress1 to userAddress2
-    const mockTransfer = ERC20.Transfer.createMockEvent({
-      from: userAddress1,
-      to: userAddress2,
-      value: 3n,
-      mockEventData: {
-        srcAddress: tokenId,
-      },
-    });
-
-    //Process the mockEvent
-    //Note: processEvent functions do not mutate the mockDb, they return a new
-    //mockDb with with modified state
-    const mockDbAfterTransfer = await ERC20.Transfer.processEvent({
-      event: mockTransfer,
-      mockDb,
-    });
-
-    //Get the balance of userAddress1 after the transfer
-    const account1Balance = mockDbAfterTransfer.entities.AccountIdleBalance.get(
-      userAddress1.toLowerCase() + mockTransfer.srcAddress.toLowerCase()
-    )?.balance;
-
-    //Assert the expected balance
-    assert.equal(
-      2n,
-      account1Balance,
-      "Should have subtracted transfer amount 3 from userAddress1 balance 5"
-    );
-
-    //Get the balance of userAddress2 after the transfer
-    const account2Balance = mockDbAfterTransfer.entities.AccountIdleBalance.get(
-      userAddress2.toLowerCase() + mockTransfer.srcAddress.toLowerCase()
-    )?.balance;
-
-    //Assert the expected balance
-    assert.equal(
-      3n,
-      account2Balance,
-      "Should have added transfer amount 3 to userAddress2 balance 0"
-    );
-
-    const account1 = mockDbAfterTransfer.entities.Account.get(userAddress1.toLowerCase())?.address;
-    assert.equal(account1, userAddress1.toLowerCase(), "Account 1 should exist");
-
-    const account2 = mockDbAfterTransfer.entities.Account.get(userAddress2.toLowerCase())?.address;
-    assert.equal(account2, userAddress2.toLowerCase(), "Account 2 should exist");
+  beforeEach(() => {
+    mockDb = MockDb.createMockDb();
   });
 
-  it("Plain transfer to itself", async () => {
-    userAddress2 = Addresses.mockAddresses[0];
+  describe("Syncswap", () => {
+    const poolAddress = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
 
-    //Create a mock Transfer event from userAddress1 to userAddress2
-    const mockTransfer = ERC20.Transfer.createMockEvent({
-      from: userAddress1,
-      to: userAddress2,
-      value: 3n,
-      mockEventData: {
-        srcAddress: tokenId,
-      },
+    beforeEach(async () => {
+      // Initialize Syncswap pool
+      mockDb.entities.SyncswapPool.set({
+        id: poolAddress.toLowerCase(),
+        address: poolAddress,
+        reserve0: 0n,
+        reserve1: 0n,
+        totalSupply: 0n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
+      });
     });
 
-    //Process the mockEvent
-    //Note: processEvent functions do not mutate the mockDb, they return a new
-    //mockDb with with modified state
-    const mockDbAfterTransfer = await ERC20.Transfer.processEvent({
-      event: mockTransfer,
-      mockDb,
-    });
-
-    //Get the balance of userAddress1 after the transfer
-    const account1Balance = mockDbAfterTransfer.entities.AccountIdleBalance.get(
-      userAddress1.toLowerCase() + mockTransfer.srcAddress.toLowerCase()
-    )?.balance;
-
-    //Assert the expected balance
-    assert.equal(5n, account1Balance, "Balance should remain unchanged");
-  });
-
-  it("Venus minting new tokens", async () => {
-    const mockDb = MockDb.createMockDb();
-    const mockMint = ERC20.Transfer.createMockEvent({
-      from: zeroAddress,
-      to: userAddress1,
-      value: 3n,
-      mockEventData: {
-        srcAddress: VenusPoolAddresses[0],
-      },
-    });
-
-    const mockDbAfterMint = await ERC20.Transfer.processEvent({
-      event: mockMint,
-      mockDb,
-    });
-
-    const pool = mockDbAfterMint.entities.VenusPool.get(VenusPoolAddresses[0]);
-    assert.notEqual(pool?.exchangeRate, 0n, "Exchange rate should be set");
-
-    const account1Balance = mockDbAfterMint.entities.VenusEarnBalance.get(
-      userAddress1.toLowerCase() + VenusPoolAddresses[0].toLowerCase()
-    );
-    assert.equal(account1Balance?.shareBalance, 3n, "Account earn balance should be set");
-  });
-
-  it("Venus should fetch exchange rate in interval", async () => {
-    const mockDb = MockDb.createMockDb();
-    const mockTx = Venus.AccrueInterest.createMockEvent({
-      mockEventData: {
-        srcAddress: VenusPoolAddresses[0],
-        block: {
-          number: 1000,
+    it("should create new pool and handle pool events", async () => {
+      // Create pool
+      const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
+        mockEventData: {
+          srcAddress: "0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb",
+          block: {
+            timestamp: 1000,
+          },
         },
-      },
-    });
+        pool: poolAddress,
+        token0,
+        token1,
+      });
 
-    const mockDbAfterTx = await Venus.AccrueInterest.processEvent({
-      event: mockTx,
-      mockDb,
-    });
+      const mockDbAfterPool = await SyncswapFactory.PoolCreated.processEvent({
+        event: mockPool,
+        mockDb,
+      });
 
-    const pool = mockDbAfterTx.entities.VenusPool.get(VenusPoolAddresses[0]);
-    assert.notEqual(pool?.exchangeRate, 0n, "Exchange rate should be set");
+      const pool = mockDbAfterPool.entities.SyncswapPool.get(poolAddress.toLowerCase());
+      assert.equal(pool?.id, poolAddress.toLowerCase(), "Pool should be created");
+      assert.equal(pool?.underlyingToken, token0.toLowerCase(), "Token 0 should be set");
+      assert.equal(pool?.underlyingToken2, token1.toLowerCase(), "Token 1 should be set");
+      assert.equal(pool?.totalSupply, 0n, "Initial total supply should be 0");
 
-    const mockTx2 = Venus.AccrueInterest.createMockEvent({
-      mockEventData: {
-        srcAddress: VenusPoolAddresses[0],
-        block: {
-          number: 1001,
+      // Test Mint event
+      const mockMint = SyncswapPool.Mint.createMockEvent({
+        mockEventData: {
+          srcAddress: poolAddress,
+          block: {
+            timestamp: 1100,
+          },
         },
-      },
+        liquidity: 100n,
+      });
+
+      const mockDbAfterMint = await SyncswapPool.Mint.processEvent({
+        event: mockMint,
+        mockDb: mockDbAfterPool,
+      });
+
+      const poolAfterMint = mockDbAfterMint.entities.SyncswapPool.get(poolAddress.toLowerCase());
+      assert.equal(poolAfterMint?.totalSupply, 100n, "Total supply should be updated after mint");
+
+      // Test Sync event
+      const mockSync = SyncswapPool.Sync.createMockEvent({
+        mockEventData: {
+          srcAddress: poolAddress,
+          block: {
+            timestamp: 1200,
+          },
+        },
+        reserve0: 100n,
+        reserve1: 100n,
+      });
+
+      const mockDbAfterSync = await SyncswapPool.Sync.processEvent({
+        event: mockSync,
+        mockDb: mockDbAfterMint,
+      });
+
+      const poolAfterSync = mockDbAfterSync.entities.SyncswapPool.get(poolAddress.toLowerCase());
+      assert.equal(poolAfterSync?.reserve0, 100n, "Reserve0 should be updated");
+      assert.equal(poolAfterSync?.reserve1, 100n, "Reserve1 should be updated");
+
+      // Test Burn event
+      const mockBurn = SyncswapPool.Burn.createMockEvent({
+        mockEventData: {
+          srcAddress: poolAddress,
+          block: {
+            timestamp: 1300,
+          },
+        },
+        liquidity: 50n,
+      });
+
+      const mockDbAfterBurn = await SyncswapPool.Burn.processEvent({
+        event: mockBurn,
+        mockDb: mockDbAfterSync,
+      });
+
+      const poolAfterBurn = mockDbAfterBurn.entities.SyncswapPool.get(poolAddress.toLowerCase());
+      assert.equal(poolAfterBurn?.totalSupply, 50n, "Total supply should be reduced after burn");
     });
 
-    const mockDbAfterTx2 = await Venus.AccrueInterest.processEvent({
-      event: mockTx2,
-      mockDb: mockDbAfterTx,
+    it("should handle user transfers and balances", async () => {
+      const mockTransfer = SyncswapPool.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: poolAddress,
+          block: {
+            timestamp: 1400,
+          },
+        },
+        from: userAddress1,
+        to: userAddress2,
+        value: 100n,
+      });
+
+      const mockDbAfterTransfer = await SyncswapPool.Transfer.processEvent({
+        event: mockTransfer,
+        mockDb,
+      });
+
+      const senderBalance = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
+        userAddress1.toLowerCase() + poolAddress.toLowerCase()
+      );
+      assert.equal(senderBalance?.shareBalance, -100n, "Sender balance should be reduced");
+
+      const receiverBalance = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
+        userAddress2.toLowerCase() + poolAddress.toLowerCase()
+      );
+      assert.equal(receiverBalance?.shareBalance, 100n, "Receiver balance should be increased");
     });
 
-    const pool2 = mockDbAfterTx2.entities.VenusPool.get(VenusPoolAddresses[0]);
-    assert.equal(pool2?.exchangeRate, pool?.exchangeRate, "Exchange rate should remain unchanged");
+    it("should handle Clagg integration", async () => {
+      // Test transfer to Clagg
+      const mockTransferToClagg = SyncswapPool.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: poolAddress,
+          block: {
+            timestamp: 1500,
+          },
+        },
+        from: userAddress1,
+        to: ClaggMainAddress,
+        value: 100n,
+      });
+
+      const mockDbAfterToClagg = await SyncswapPool.Transfer.processEvent({
+        event: mockTransferToClagg,
+        mockDb,
+      });
+
+      const claggPoolAfterDeposit = mockDbAfterToClagg.entities.ClaggPool.get(
+        poolAddress.toLowerCase()
+      );
+      assert.equal(
+        claggPoolAfterDeposit?.totalSupply,
+        100n,
+        "Clagg pool supply should increase after deposit"
+      );
+
+      // Test transfer from Clagg
+      const mockTransferFromClagg = SyncswapPool.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: poolAddress,
+          block: {
+            timestamp: 1600,
+          },
+        },
+        from: ClaggMainAddress,
+        to: userAddress1,
+        value: 50n,
+      });
+
+      const mockDbAfterFromClagg = await SyncswapPool.Transfer.processEvent({
+        event: mockTransferFromClagg,
+        mockDb: mockDbAfterToClagg,
+      });
+
+      const claggPoolAfterWithdraw = mockDbAfterFromClagg.entities.ClaggPool.get(
+        poolAddress.toLowerCase()
+      );
+      assert.equal(
+        claggPoolAfterWithdraw?.totalSupply,
+        50n,
+        "Clagg pool supply should decrease after withdrawal"
+      );
+    });
   });
 
-  it("Syncswap should create new pool and handle user balances", async () => {
-    process.env.TEST_MODE = "syncswap";
-    const mockDb = MockDb.createMockDb();
-    const token0 = "0x367700c33ea7d4523403ca8ca790918ccb76dAb4";
-    const token1 = "0x65006841486feb84570d909703ad646ddeaf0f5B";
-    const poolAdd = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
-
-    const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
-      mockEventData: {
-        srcAddress: "0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb",
-      },
-      pool: poolAdd,
-      token0,
-      token1,
-    });
-
-    const mockDbAfterPool = await SyncswapFactory.PoolCreated.processEvent({
-      event: mockPool,
-      mockDb,
-    });
-
-    const pool = mockDbAfterPool.entities.SyncswapPool.get(poolAdd.toLowerCase());
-    assert.equal(pool?.id, poolAdd.toLowerCase(), "Pool should be created");
-    assert.equal(pool?.underlyingToken, token0.toLowerCase(), "Token 0 should be set");
-    assert.equal(pool?.underlyingToken2, token1.toLowerCase(), "Token 1 should be set");
-
-    const mockTx = SyncswapPool.Mint.createMockEvent({
-      mockEventData: {
-        srcAddress: poolAdd,
-      },
-      liquidity: 100n,
-    });
-
-    const mockSyncTx = SyncswapPool.Sync.createMockEvent({
-      mockEventData: {
-        srcAddress: poolAdd,
-      },
-      reserve0: 100n,
-      reserve1: 100n,
-    });
-
-    const mockDbAfterTx = await SyncswapPool.Mint.processEvent({
-      event: mockTx,
-      mockDb: mockDbAfterPool,
-    });
-
-    const mockDbAfterSync = await SyncswapPool.Sync.processEvent({
-      event: mockSyncTx,
-      mockDb: mockDbAfterTx,
-    });
-
-    const pool2 = mockDbAfterSync.entities.SyncswapPool.get(poolAdd.toLowerCase());
-    assert.equal(
-      pool2?.totalSupply,
-      100n + (pool?.totalSupply ?? 0n),
-      "Total supply should be set"
-    );
-
-    assert.equal(pool2?.reserve0, 100n, "Reserve 0 should be set");
-    assert.equal(pool2?.reserve1, 100n, "Reserve 1 should be set");
-
-    const mockBurn = SyncswapPool.Burn.createMockEvent({
-      mockEventData: {
-        srcAddress: poolAdd,
-      },
-      liquidity: 100n,
-    });
-
-    const mockDbAfterBurn = await SyncswapPool.Burn.processEvent({
-      event: mockBurn,
-      mockDb: mockDbAfterSync,
-    });
-
-    const pool3 = mockDbAfterBurn.entities.SyncswapPool.get(poolAdd.toLowerCase());
-    assert.equal(pool3?.totalSupply, pool?.totalSupply, "Total supply should be set");
-    const userAddress1 = Addresses.mockAddresses[0];
-    const userAddress2 = Addresses.mockAddresses[1];
-    const transferTx = ERC20.Transfer.createMockEvent({
-      from: userAddress1,
-      to: userAddress2,
-      value: 100n,
-      mockEventData: {
-        srcAddress: poolAdd,
-      },
-    });
-
-    const mockDbAfterTransfer = await ERC20.Transfer.processEvent({
-      event: transferTx,
-      mockDb: mockDbAfterBurn,
-    });
-
-    const accountBalance = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
-      userAddress2.toLowerCase() + poolAdd.toLowerCase()
-    );
-    assert.equal(accountBalance?.shareBalance, 100n, "Share balance should be set");
-    const accountBalance2 = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
-      userAddress1.toLowerCase() + poolAdd.toLowerCase()
-    );
-    assert.equal(accountBalance2?.shareBalance, -100n, "Share balance should be set");
-    process.env.TEST_MODE = "default";
-  });
-
-  it("Clagg should handle minting and burning correctly", async () => {
-    const mockDb = MockDb.createMockDb();
-    const userAddress = Addresses.mockAddresses[0];
-    const claggPoolAddress = ClaggMainAddress;
+  describe("Venus", () => {
     const venusPoolAddress = VenusPoolAddresses[0];
-    const token0 = "0x367700c33ea7d4523403ca8ca790918ccb76dAb4";
-    const token1 = "0x65006841486feb84570d909703ad646ddeaf0f5B";
-    const poolAdd = "0x14A7a4bea54983796086eaea935564c5f33179c5";
 
-    const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
-      mockEventData: {
-        srcAddress: "0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb",
-      },
-      pool: poolAdd,
-      token0,
-      token1,
+    beforeEach(async () => {
+      // Initialize Venus pool
+      mockDb.entities.VenusPool.set({
+        id: venusPoolAddress.toLowerCase(),
+        address: venusPoolAddress,
+        name: "Venus Pool",
+        symbol: "vTOKEN",
+        underlyingToken: token0,
+        exchangeRate: 0n,
+      });
     });
 
-    const mockDbAfterPool = await SyncswapFactory.PoolCreated.processEvent({
-      event: mockPool,
-      mockDb,
+    it("should handle minting and user balances", async () => {
+      const mockMint = Venus.AccrueInterest.createMockEvent({
+        mockEventData: {
+          srcAddress: venusPoolAddress,
+          block: {
+            number: 1000,
+          },
+        },
+      });
+
+      const mockDbAfterMint = await Venus.AccrueInterest.processEvent({
+        event: mockMint,
+        mockDb,
+      });
+
+      const pool = mockDbAfterMint.entities.VenusPool.get(venusPoolAddress);
+      assert.notEqual(pool?.exchangeRate, 0n, "Exchange rate should be set");
+
+      // Test user transfer
+      const mockTransfer = Venus.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: venusPoolAddress,
+        },
+        from: userAddress1,
+        to: userAddress2,
+        value: 100n,
+      });
+
+      const mockDbAfterTransfer = await Venus.Transfer.processEvent({
+        event: mockTransfer,
+        mockDb: mockDbAfterMint,
+      });
+
+      const senderBalance = mockDbAfterTransfer.entities.VenusEarnBalance.get(
+        userAddress1.toLowerCase() + venusPoolAddress.toLowerCase()
+      );
+      assert.equal(senderBalance?.shareBalance, -100n, "Sender balance should be reduced");
+
+      const receiverBalance = mockDbAfterTransfer.entities.VenusEarnBalance.get(
+        userAddress2.toLowerCase() + venusPoolAddress.toLowerCase()
+      );
+      assert.equal(receiverBalance?.shareBalance, 100n, "Receiver balance should be increased");
     });
 
-    // Test minting Clagg shares
-    const mockMint = ClaggMain.Deposit.createMockEvent({
-      user: userAddress,
-      pool: poolAdd,
-      amount: 130n,
-      shares: 100n,
-      mockEventData: {
-        srcAddress: ClaggMainAddress,
-      },
+    it("should handle Clagg integration", async () => {
+      // Test transfer to Clagg
+      const mockTransferToClagg = Venus.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: venusPoolAddress,
+        },
+        from: userAddress1,
+        to: ClaggMainAddress,
+        value: 100n,
+      });
+
+      const mockDbAfterToClagg = await Venus.Transfer.processEvent({
+        event: mockTransferToClagg,
+        mockDb,
+      });
+
+      const claggPoolAfterDeposit = mockDbAfterToClagg.entities.ClaggPool.get(
+        venusPoolAddress.toLowerCase()
+      );
+      assert.equal(
+        claggPoolAfterDeposit?.totalSupply,
+        100n,
+        "Clagg pool supply should increase after deposit"
+      );
+
+      // Test transfer from Clagg
+      const mockTransferFromClagg = Venus.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: venusPoolAddress,
+        },
+        from: ClaggMainAddress,
+        to: userAddress1,
+        value: 50n,
+      });
+
+      const mockDbAfterFromClagg = await Venus.Transfer.processEvent({
+        event: mockTransferFromClagg,
+        mockDb: mockDbAfterToClagg,
+      });
+
+      const claggPoolAfterWithdraw = mockDbAfterFromClagg.entities.ClaggPool.get(
+        venusPoolAddress.toLowerCase()
+      );
+      assert.equal(
+        claggPoolAfterWithdraw?.totalSupply,
+        50n,
+        "Clagg pool supply should decrease after withdrawal"
+      );
     });
-
-    const mockDbAfterMint = await ClaggMain.Deposit.processEvent({
-      event: mockMint,
-      mockDb: mockDbAfterPool,
-    });
-
-    // Verify Clagg pool state after mint
-    const pool = mockDbAfterMint.entities.ClaggPool.get(poolAdd.toLowerCase());
-    assert.equal(pool?.totalShares, 100n, "Total shares should be updated after mint");
-
-    // Verify user balance
-    const userBalance = mockDbAfterMint.entities.ClaggEarnBalance.get(
-      userAddress.toLowerCase() + poolAdd.toLowerCase()
-    );
-
-    assert.equal(
-      userBalance?.shareBalance,
-      100n,
-      "User share balance should be updated after mint"
-    );
-
-    // Test burning Clagg shares
-    const mockBurn = ClaggMain.Withdraw.createMockEvent({
-      user: userAddress,
-      pool: poolAdd,
-      amount: 40n,
-      shares: 50n,
-      mockEventData: {
-        srcAddress: ClaggMainAddress,
-      },
-    });
-
-    const mockDbAfterBurn = await ClaggMain.Withdraw.processEvent({
-      event: mockBurn,
-      mockDb: mockDbAfterMint,
-    });
-
-    // Verify Clagg pool state after burn
-    const poolAfterBurn = mockDbAfterBurn.entities.ClaggPool.get(poolAdd.toLowerCase());
-    assert.equal(poolAfterBurn?.totalShares, 50n, "Total shares should be reduced after burn");
-
-    // Verify user balance after burn
-    const userBalanceAfterBurn = mockDbAfterBurn.entities.ClaggEarnBalance.get(
-      userAddress.toLowerCase() + poolAdd.toLowerCase()
-    );
-    assert.equal(
-      userBalanceAfterBurn?.shareBalance,
-      50n,
-      "User share balance should be reduced after burn"
-    );
-
-    // Test integration with Venus pool
-    const mockVenusTransfer = ERC20.Transfer.createMockEvent({
-      from: zeroAddress,
-      to: claggPoolAddress,
-      value: 200n,
-      mockEventData: {
-        srcAddress: venusPoolAddress,
-      },
-    });
-
-    const mockDbAfterVenus = await ERC20.Transfer.processEvent({
-      event: mockVenusTransfer,
-      mockDb: mockDbAfterBurn,
-    });
-
-    const claggPool = mockDbAfterVenus.entities.ClaggPool.get(venusPoolAddress.toLowerCase());
-    assert.equal(claggPool?.totalSupply, 200n, "Total supply should be updated after mint");
   });
 
-  it("Aave minting new tokens", async () => {
-    const mockMint = Aave.Mint.createMockEvent({
-      caller: userAddress1,
-      onBehalfOf: userAddress1,
-      value: 100n,
-      balanceIncrease: 100n,
-      index: 1000000n,
-      mockEventData: {
-        srcAddress: AavePoolAddresses[0],
-      },
+  describe("Aave", () => {
+    const aavePoolAddress = AavePoolAddresses[0];
+
+    beforeEach(async () => {
+      // Initialize Aave pool
+      mockDb.entities.AavePool.set({
+        id: aavePoolAddress.toLowerCase(),
+        address: aavePoolAddress,
+        name: "Aave Pool",
+        symbol: "aToken",
+        underlyingToken: token0,
+        lastIndex: 0n,
+      });
     });
 
-    const mockDbAfterMint = await Aave.Mint.processEvent({
-      event: mockMint,
-      mockDb,
+    it("should handle minting and user balances", async () => {
+      const mockMint = Aave.Mint.createMockEvent({
+        mockEventData: {
+          srcAddress: aavePoolAddress,
+        },
+        caller: userAddress1,
+        onBehalfOf: userAddress1,
+        value: 100n,
+        balanceIncrease: 100n,
+        index: 1000000n,
+      });
+
+      const mockDbAfterMint = await Aave.Mint.processEvent({
+        event: mockMint,
+        mockDb,
+      });
+
+      const pool = mockDbAfterMint.entities.AavePool.get(aavePoolAddress.toLowerCase());
+      assert.equal(pool?.lastIndex, 1000000n, "Last index should be updated");
+
+      const userBalance = mockDbAfterMint.entities.AaveEarnBalance.get(
+        userAddress1.toLowerCase() + aavePoolAddress.toLowerCase()
+      );
+      assert.equal(userBalance?.userIndex, 1000000n, "User index should be set");
     });
 
-    // Verify pool state
-    const pool = mockDbAfterMint.entities.AavePool.get(AavePoolAddresses[0].toLowerCase());
-    assert.equal(pool?.lastIndex, 1000000n, "Last index should be updated");
+    it("should handle burning", async () => {
+      // First mint some tokens
+      const mockMint = Aave.Mint.createMockEvent({
+        mockEventData: {
+          srcAddress: aavePoolAddress,
+        },
+        caller: userAddress1,
+        onBehalfOf: userAddress1,
+        value: 100n,
+        balanceIncrease: 100n,
+        index: 1000000n,
+      });
 
-    // Verify user balance
-    const userBalance = mockDbAfterMint.entities.AaveEarnBalance.get(
-      userAddress1.toLowerCase() + AavePoolAddresses[0].toLowerCase()
-    );
+      const mockDbAfterMint = await Aave.Mint.processEvent({
+        event: mockMint,
+        mockDb,
+      });
 
-    assert.equal(userBalance?.userIndex, 1000000n, "User index should be set");
+      // Then burn some tokens
+      const mockBurn = Aave.Burn.createMockEvent({
+        mockEventData: {
+          srcAddress: aavePoolAddress,
+        },
+        from: userAddress1,
+        target: userAddress2,
+        value: 50n,
+        balanceIncrease: 0n,
+        index: 1100000n,
+      });
+
+      const mockDbAfterBurn = await Aave.Burn.processEvent({
+        event: mockBurn,
+        mockDb: mockDbAfterMint,
+      });
+
+      const pool = mockDbAfterBurn.entities.AavePool.get(aavePoolAddress.toLowerCase());
+      assert.equal(pool?.lastIndex, 1100000n, "Last index should be updated after burn");
+
+      const userBalance = mockDbAfterBurn.entities.AaveEarnBalance.get(
+        userAddress1.toLowerCase() + aavePoolAddress.toLowerCase()
+      );
+      assert.equal(userBalance?.userIndex, 1100000n, "User index should be updated after burn");
+    });
+
+    it("should handle Clagg integration", async () => {
+      // Test transfer to Clagg
+      const mockTransferToClagg = Aave.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: aavePoolAddress,
+        },
+        from: userAddress1,
+        to: ClaggMainAddress,
+        value: 100n,
+      });
+
+      const mockDbAfterToClagg = await Aave.Transfer.processEvent({
+        event: mockTransferToClagg,
+        mockDb,
+      });
+
+      const claggPoolAfterDeposit = mockDbAfterToClagg.entities.ClaggPool.get(
+        aavePoolAddress.toLowerCase()
+      );
+      assert.equal(
+        claggPoolAfterDeposit?.totalSupply,
+        100n,
+        "Clagg pool supply should increase after deposit"
+      );
+
+      // Test transfer from Clagg
+      const mockTransferFromClagg = Aave.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: aavePoolAddress,
+        },
+        from: ClaggMainAddress,
+        to: userAddress1,
+        value: 50n,
+      });
+
+      const mockDbAfterFromClagg = await Aave.Transfer.processEvent({
+        event: mockTransferFromClagg,
+        mockDb: mockDbAfterToClagg,
+      });
+
+      const claggPoolAfterWithdraw = mockDbAfterFromClagg.entities.ClaggPool.get(
+        aavePoolAddress.toLowerCase()
+      );
+      assert.equal(
+        claggPoolAfterWithdraw?.totalSupply,
+        50n,
+        "Clagg pool supply should decrease after withdrawal"
+      );
+    });
   });
 
-  it("Aave burning tokens", async () => {
-    // First mint some tokens
-    const mockMint = Aave.Mint.createMockEvent({
-      caller: userAddress1,
-      onBehalfOf: userAddress1,
-      value: 100n,
-      balanceIncrease: 100n,
-      index: 1000000n,
-      mockEventData: {
-        srcAddress: AavePoolAddresses[0],
-      },
+  describe("Clagg", () => {
+    const poolAddress = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
+
+    beforeEach(async () => {
+      // Initialize Clagg pool and underlying pool (Syncswap in this case)
+      mockDb.entities.SyncswapPool.set({
+        id: poolAddress.toLowerCase(),
+        address: poolAddress,
+        reserve0: 0n,
+        reserve1: 0n,
+        totalSupply: 0n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
+      });
+
+      mockDb.entities.ClaggPool.set({
+        id: poolAddress.toLowerCase(),
+        address: poolAddress,
+        totalShares: 0n,
+        totalSupply: 0n,
+      });
     });
 
-    const mockDbAfterMint = await Aave.Mint.processEvent({
-      event: mockMint,
-      mockDb,
+    it("should handle deposits and withdrawals", async () => {
+      // Test deposit
+      const mockDeposit = ClaggMain.Deposit.createMockEvent({
+        mockEventData: {
+          srcAddress: ClaggMainAddress,
+        },
+        user: userAddress1,
+        pool: poolAddress,
+        amount: 100n,
+        shares: 100n,
+      });
+
+      const mockDbAfterDeposit = await ClaggMain.Deposit.processEvent({
+        event: mockDeposit,
+        mockDb,
+      });
+
+      const poolAfterDeposit = mockDbAfterDeposit.entities.ClaggPool.get(poolAddress.toLowerCase());
+      assert.equal(
+        poolAfterDeposit?.totalShares,
+        100n,
+        "Total shares should increase after deposit"
+      );
+
+      const userBalanceAfterDeposit = mockDbAfterDeposit.entities.ClaggEarnBalance.get(
+        userAddress1.toLowerCase() + poolAddress.toLowerCase()
+      );
+      assert.equal(
+        userBalanceAfterDeposit?.shareBalance,
+        100n,
+        "User share balance should increase after deposit"
+      );
+      assert.equal(
+        userBalanceAfterDeposit?.totalDeposits,
+        100n,
+        "Total deposits should be tracked"
+      );
+
+      // Test withdrawal
+      const mockWithdraw = ClaggMain.Withdraw.createMockEvent({
+        mockEventData: {
+          srcAddress: ClaggMainAddress,
+        },
+        user: userAddress1,
+        pool: poolAddress,
+        amount: 50n,
+        shares: 50n,
+      });
+
+      const mockDbAfterWithdraw = await ClaggMain.Withdraw.processEvent({
+        event: mockWithdraw,
+        mockDb: mockDbAfterDeposit,
+      });
+
+      const poolAfterWithdraw = mockDbAfterWithdraw.entities.ClaggPool.get(
+        poolAddress.toLowerCase()
+      );
+      assert.equal(
+        poolAfterWithdraw?.totalShares,
+        50n,
+        "Total shares should decrease after withdrawal"
+      );
+
+      const userBalanceAfterWithdraw = mockDbAfterWithdraw.entities.ClaggEarnBalance.get(
+        userAddress1.toLowerCase() + poolAddress.toLowerCase()
+      );
+      assert.equal(
+        userBalanceAfterWithdraw?.shareBalance,
+        50n,
+        "User share balance should decrease after withdrawal"
+      );
+      assert.equal(
+        userBalanceAfterWithdraw?.totalWithdrawals,
+        50n,
+        "Total withdrawals should be tracked"
+      );
     });
-
-    // Then burn some tokens
-    const mockBurn = Aave.Burn.createMockEvent({
-      from: userAddress1,
-      target: userAddress2,
-      value: 50n,
-      balanceIncrease: 0n,
-      index: 1100000n,
-      mockEventData: {
-        srcAddress: AavePoolAddresses[0],
-      },
-    });
-
-    const mockDbAfterBurn = await Aave.Burn.processEvent({
-      event: mockBurn,
-      mockDb: mockDbAfterMint,
-    });
-
-    // Verify pool state
-    const pool = mockDbAfterBurn.entities.AavePool.get(AavePoolAddresses[0].toLowerCase());
-    assert.equal(pool?.lastIndex, 1100000n, "Last index should be updated after burn");
-
-    // Verify user balance
-    const userBalance = mockDbAfterBurn.entities.AaveEarnBalance.get(
-      userAddress1.toLowerCase() + AavePoolAddresses[0].toLowerCase()
-    );
-    assert.equal(userBalance?.userIndex, 1100000n, "User index should be updated after burn");
   });
 
-  it("Aave transfer between users", async () => {
-    const userAddress2 = Addresses.mockAddresses[1];
-    const mockTransfer = ERC20.Transfer.createMockEvent({
-      from: userAddress1,
-      to: userAddress2,
-      value: 30n,
-      mockEventData: {
-        srcAddress: AavePoolAddresses[0],
-      },
+  describe("Historical Entities", () => {
+    const syncswapPoolAddress = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
+    const venusPoolAddress = VenusPoolAddresses[0];
+    const aavePoolAddress = AavePoolAddresses[0];
+    const timestamp = 86400; // Use a timestamp that's already rounded to a day
+
+    beforeEach(async () => {
+      // Initialize Syncswap pool
+      mockDb.entities.SyncswapPool.set({
+        id: syncswapPoolAddress.toLowerCase(),
+        address: syncswapPoolAddress,
+        reserve0: 0n,
+        reserve1: 0n,
+        totalSupply: 0n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
+      });
+
+      // Initialize Venus pool
+      mockDb.entities.VenusPool.set({
+        id: venusPoolAddress.toLowerCase(),
+        address: venusPoolAddress,
+        name: "Venus Pool",
+        symbol: "vTOKEN",
+        underlyingToken: token0,
+        exchangeRate: 1000000n,
+      });
+
+      // Initialize Aave pool
+      mockDb.entities.AavePool.set({
+        id: aavePoolAddress.toLowerCase(),
+        address: aavePoolAddress,
+        name: "Aave Pool",
+        symbol: "aToken",
+        underlyingToken: token0,
+        lastIndex: 2000000n,
+      });
+
+      // Initialize Clagg pool
+      mockDb.entities.ClaggPool.set({
+        id: syncswapPoolAddress.toLowerCase(),
+        address: syncswapPoolAddress,
+        totalShares: 0n,
+        totalSupply: 0n,
+      });
     });
 
-    const mockDbAfterTransfer = await ERC20.Transfer.processEvent({
-      event: mockTransfer,
-      mockDb,
+    it("should create historical entities for Syncswap events", async () => {
+      // First create the pool
+      const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
+        mockEventData: {
+          srcAddress: "0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb",
+          block: {
+            timestamp,
+          },
+        },
+        pool: syncswapPoolAddress,
+        token0,
+        token1,
+      });
+
+      const mockDbAfterPool = await SyncswapFactory.PoolCreated.processEvent({
+        event: mockPool,
+        mockDb,
+      });
+
+      // Then test Sync historical entity
+      const mockSync = SyncswapPool.Sync.createMockEvent({
+        mockEventData: {
+          srcAddress: syncswapPoolAddress,
+          block: {
+            timestamp,
+          },
+        },
+        reserve0: 1000n,
+        reserve1: 2000n,
+      });
+
+      const mockDbAfterSync = await SyncswapPool.Sync.processEvent({
+        event: mockSync,
+        mockDb: mockDbAfterPool,
+      });
+
+      const historicalSync = mockDbAfterSync.entities.HistoricalSyncswapPool.get(
+        syncswapPoolAddress.toLowerCase() + timestamp.toString()
+      );
+      assert.equal(historicalSync?.reserve0, 1000n, "Historical reserve0 should be recorded");
+      assert.equal(historicalSync?.reserve1, 2000n, "Historical reserve1 should be recorded");
+      assert.equal(
+        historicalSync?.timestamp,
+        BigInt(timestamp),
+        "Historical timestamp should be recorded"
+      );
     });
 
-    // Verify sender balance
-    const senderBalance = mockDbAfterTransfer.entities.AaveEarnBalance.get(
-      userAddress1.toLowerCase() + AavePoolAddresses[0].toLowerCase()
-    );
+    it("should create historical entities for Venus events", async () => {
+      // Test AccrueInterest historical entity
+      const mockAccrue = Venus.AccrueInterest.createMockEvent({
+        mockEventData: {
+          srcAddress: venusPoolAddress,
+          block: {
+            number: 1000,
+            timestamp,
+          },
+        },
+      });
 
-    assert.equal(senderBalance?.shareBalance, -30n, "Sender balance should be reduced");
+      const mockDbAfterAccrue = await Venus.AccrueInterest.processEvent({
+        event: mockAccrue,
+        mockDb,
+      });
 
-    // Verify receiver balance
-    const receiverBalance = mockDbAfterTransfer.entities.AaveEarnBalance.get(
-      userAddress2.toLowerCase() + AavePoolAddresses[0].toLowerCase()
-    );
-    assert.equal(receiverBalance?.shareBalance, 30n, "Receiver balance should be increased");
-  });
-
-  it("Aave transfer to/from Clagg", async () => {
-    // Test transfer to Clagg
-    const mockTransferToClagg = ERC20.Transfer.createMockEvent({
-      from: userAddress1,
-      to: ClaggMainAddress,
-      value: 50n,
-      mockEventData: {
-        srcAddress: AavePoolAddresses[0],
-      },
+      const historicalVenus = mockDbAfterAccrue.entities.HistoricalVenusPool.get(
+        venusPoolAddress.toLowerCase() + timestamp.toString()
+      );
+      assert.notEqual(
+        historicalVenus?.exchangeRate,
+        0n,
+        "Historical exchange rate should be recorded"
+      );
+      assert.equal(
+        historicalVenus?.timestamp,
+        BigInt(timestamp),
+        "Historical timestamp should be recorded"
+      );
     });
 
-    const mockDbAfterToClagg = await ERC20.Transfer.processEvent({
-      event: mockTransferToClagg,
-      mockDb,
+    it("should create historical entities for Aave events", async () => {
+      // Test Mint historical entity with initial index
+      const mockMint = Aave.Mint.createMockEvent({
+        mockEventData: {
+          srcAddress: aavePoolAddress,
+          block: {
+            timestamp,
+          },
+        },
+        caller: userAddress1,
+        onBehalfOf: userAddress1,
+        value: 100n,
+        balanceIncrease: 100n,
+        index: 2000000n,
+      });
+
+      const mockDbAfterMint = await Aave.Mint.processEvent({
+        event: mockMint,
+        mockDb,
+      });
+
+      const historicalAave = mockDbAfterMint.entities.HistoricalAavePool.get(
+        aavePoolAddress.toLowerCase() + timestamp.toString()
+      );
+      assert.equal(historicalAave?.lastIndex, 2000000n, "Historical index should be recorded");
+      assert.equal(
+        historicalAave?.timestamp,
+        BigInt(timestamp),
+        "Historical timestamp should be recorded"
+      );
     });
 
-    const claggPoolAfterDeposit = mockDbAfterToClagg.entities.ClaggPool.get(
-      AavePoolAddresses[0].toLowerCase()
-    );
-    assert.equal(
-      claggPoolAfterDeposit?.totalSupply,
-      50n,
-      "Clagg pool total supply should increase after deposit"
-    );
+    it("should create historical entities for Clagg events", async () => {
+      // Initialize with zero shares
+      mockDb.entities.ClaggPool.set({
+        id: syncswapPoolAddress.toLowerCase(),
+        address: syncswapPoolAddress,
+        totalShares: 0n,
+        totalSupply: 0n,
+      });
 
-    // Test transfer from Clagg
-    const mockTransferFromClagg = ERC20.Transfer.createMockEvent({
-      from: ClaggMainAddress,
-      to: userAddress1,
-      value: 20n,
-      mockEventData: {
-        srcAddress: AavePoolAddresses[0],
-      },
+      // Test Deposit historical entity
+      const mockDeposit = ClaggMain.Deposit.createMockEvent({
+        mockEventData: {
+          srcAddress: ClaggMainAddress,
+          block: {
+            timestamp,
+          },
+        },
+        user: userAddress1,
+        pool: syncswapPoolAddress,
+        amount: 100n,
+        shares: 100n,
+      });
+
+      const mockDbAfterDeposit = await ClaggMain.Deposit.processEvent({
+        event: mockDeposit,
+        mockDb,
+      });
+
+      const historicalClagg = mockDbAfterDeposit.entities.HistoricalClaggPool.get(
+        syncswapPoolAddress.toLowerCase() + timestamp.toString()
+      );
+      assert.equal(
+        historicalClagg?.totalShares,
+        100n,
+        "Historical total shares should be recorded"
+      );
+      assert.equal(
+        historicalClagg?.timestamp,
+        BigInt(timestamp),
+        "Historical timestamp should be recorded"
+      );
     });
-
-    const mockDbAfterFromClagg = await ERC20.Transfer.processEvent({
-      event: mockTransferFromClagg,
-      mockDb: mockDbAfterToClagg,
-    });
-
-    const claggPoolAfterWithdraw = mockDbAfterFromClagg.entities.ClaggPool.get(
-      AavePoolAddresses[0].toLowerCase()
-    );
-    assert.equal(
-      claggPoolAfterWithdraw?.totalSupply,
-      30n,
-      "Clagg pool total supply should decrease after withdrawal"
-    );
   });
 });

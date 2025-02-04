@@ -27,4 +27,4 @@ class Interval implements Interval {
   }
 }
 
-export const venusExchangeRateInterval = new Interval(21600);
+export const venusExchangeRateInterval = new Interval(10000);

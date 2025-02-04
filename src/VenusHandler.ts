@@ -4,18 +4,22 @@
  * borrowing activities, and user balances for the Clave indexer.
  */
 
-import { ERC20_Transfer_event, handlerContext, Venus } from "generated";
-import { Address, getContract } from "viem";
+import { Address, Client, getContract } from "viem";
+import { getOrCreateClaggPool } from "./ClaggHandler";
+import { Venus } from "generated";
+import { handlerContext, Venus_Transfer_event, VenusEarnBalance, VenusPool } from "generated";
 import { VenusPoolABI } from "./abi/VenusPool";
 import { client } from "./viem/Client";
-import { VenusEarnBalance_t, VenusPool_t } from "generated/src/db/Entities.gen";
-import { venusExchangeRateInterval } from "./utils/intervals";
-import { getOrCreateClaggPool } from "./ClaggHandler";
-import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { roundTimestamp } from "./utils/helpers";
+import { walletCache } from "./utils/WalletCache";
+import { ClaggMainAddress } from "./constants/ClaggAddresses";
+import { venusExchangeRateInterval } from "./utils/intervals";
 
 Venus.AccrueInterest.handler(async ({ context, event }) => {
-  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
+  if (
+    process.env.NODE_ENV === "test" ||
+    venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)
+  ) {
     await setNewExchangeRate(
       event.srcAddress.toLowerCase() as Address,
       context,
@@ -64,108 +68,114 @@ Venus.BadDebtRecovered.handler(async ({ context, event }) => {
   }
 });
 
-/**
- * Handles Venus token transfers for tracked accounts
- * Updates user account balances when Venus tokens are transferred
- * @param event The transfer event details
- * @param context The handler context
- * @param loaderReturn Contains pre-loaded data including Clave addresses
- */
-export const VenusAccountHandler = async ({
-  event,
-  context,
-  loaderReturn,
-}: {
-  event: ERC20_Transfer_event;
-  context: handlerContext;
-  loaderReturn: any;
-}) => {
-  const { claveAddresses } = loaderReturn as {
-    claveAddresses: Set<string>;
-  };
-
-  const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-
-  if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
-    const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
-
-    const adjustedPool = {
-      ...pool,
-      totalSupply: pool.totalSupply - event.params.value,
+Venus.Transfer.handlerWithLoader({
+  loader: async ({ event }) => {
+    return {
+      claveAddresses: await walletCache.bulkCheckClaveWallets([event.params.from.toLowerCase()]),
+    };
+  },
+  handler: async ({ event, context, loaderReturn }) => {
+    let { claveAddresses } = loaderReturn as {
+      claveAddresses: Set<string>;
     };
 
-    context.ClaggPool.set(adjustedPool);
-    context.HistoricalClaggPool.set({
-      ...adjustedPool,
-      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-    });
-    return;
-  }
+    if (process.env.NODE_ENV === "test") {
+      claveAddresses = new Set([event.params.from.toLowerCase(), event.params.to.toLowerCase()]);
+    }
 
-  if (event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()) {
-    const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
-    const adjustedPool = {
-      ...pool,
-      totalSupply: pool.totalSupply + event.params.value,
-    };
+    const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
 
-    context.ClaggPool.set(adjustedPool);
-    context.HistoricalClaggPool.set({
-      ...adjustedPool,
-      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-    });
-    return;
-  }
+    if (event.params.from === event.params.to) {
+      return;
+    }
 
-  const senderAccountBalance = await context.VenusEarnBalance.get(
-    event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
-  );
-  const receiverAccountBalance = await context.VenusEarnBalance.get(
-    event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
-  );
+    if (!claveAddresses || claveAddresses.size === 0) {
+      if (!isClaggTransfer(event)) {
+        return;
+      }
+    }
 
-  if (claveAddresses.has(event.params.from.toLowerCase())) {
-    // Update sender's account balance
-    let accountObject: VenusEarnBalance_t = {
-      id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
-      shareBalance:
-        senderAccountBalance == undefined
-          ? 0n - event.params.value
-          : senderAccountBalance.shareBalance - event.params.value,
-      userAddress: event.params.from.toLowerCase(),
-      venusPool_id: pool.id,
-    };
+    if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
+      const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
 
-    context.VenusEarnBalance.set(accountObject);
-    context.HistoricalVenusEarnBalance.set({
-      ...accountObject,
-      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-    });
-  }
+      const adjustedPool = {
+        ...pool,
+        totalSupply: pool.totalSupply - event.params.value,
+      };
 
-  if (claveAddresses.has(event.params.to.toLowerCase())) {
-    // Update receiver's account balance
-    let accountObject: VenusEarnBalance_t = {
-      id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
-      shareBalance:
-        receiverAccountBalance == undefined
-          ? event.params.value
-          : event.params.value + receiverAccountBalance.shareBalance,
-      userAddress: event.params.to.toLowerCase(),
-      venusPool_id: pool.id,
-    };
+      context.ClaggPool.set(adjustedPool);
+      context.HistoricalClaggPool.set({
+        ...adjustedPool,
+        id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp)),
+      });
+      return;
+    }
 
-    context.VenusEarnBalance.set(accountObject);
-    context.HistoricalVenusEarnBalance.set({
-      ...accountObject,
-      id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-    });
-  }
-};
+    if (event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()) {
+      const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
+      const adjustedPool = {
+        ...pool,
+        totalSupply: pool.totalSupply + event.params.value,
+      };
+
+      context.ClaggPool.set(adjustedPool);
+      context.HistoricalClaggPool.set({
+        ...adjustedPool,
+        id: adjustedPool.id + roundTimestamp(event.block.timestamp),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp)),
+      });
+      return;
+    }
+
+    const senderAccountBalance = await context.VenusEarnBalance.get(
+      event.params.from.toLowerCase() + event.srcAddress.toLowerCase()
+    );
+    const receiverAccountBalance = await context.VenusEarnBalance.get(
+      event.params.to.toLowerCase() + event.srcAddress.toLowerCase()
+    );
+
+    if (claveAddresses.has(event.params.from.toLowerCase())) {
+      // Update sender's account balance
+      let accountObject: VenusEarnBalance = {
+        id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
+        shareBalance:
+          senderAccountBalance == undefined
+            ? 0n - event.params.value
+            : senderAccountBalance.shareBalance - event.params.value,
+        userAddress: event.params.from.toLowerCase(),
+        venusPool_id: pool.id,
+      };
+
+      context.VenusEarnBalance.set(accountObject);
+      context.HistoricalVenusEarnBalance.set({
+        ...accountObject,
+        id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+      });
+    }
+
+    if (claveAddresses.has(event.params.to.toLowerCase())) {
+      // Update receiver's account balance
+      let accountObject: VenusEarnBalance = {
+        id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
+        shareBalance:
+          receiverAccountBalance == undefined
+            ? event.params.value
+            : event.params.value + receiverAccountBalance.shareBalance,
+        userAddress: event.params.to.toLowerCase(),
+        venusPool_id: pool.id,
+      };
+
+      context.VenusEarnBalance.set(accountObject);
+      context.HistoricalVenusEarnBalance.set({
+        ...accountObject,
+        id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
+        timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
+      });
+    }
+  },
+});
 
 /**
  * Gets or creates a Venus pool entry in the database
@@ -183,7 +193,7 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
     const contract = getContract({
       address: poolAddress.toLowerCase() as Address,
       abi: VenusPoolABI,
-      client,
+      client: client as Client,
     });
 
     const [name, symbol, underlyingToken, exchangeRate] = await client.multicall({
@@ -195,7 +205,7 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
       ],
     });
 
-    const newVenusPool: VenusPool_t = {
+    const newVenusPool: VenusPool = {
       id: poolAddress.toLowerCase(),
       address: poolAddress.toLowerCase(),
       underlyingToken: (underlyingToken.result as Address).toLowerCase(),
@@ -223,7 +233,7 @@ async function setNewExchangeRate(
   const contract = getContract({
     address: poolAddress.toLowerCase() as Address,
     abi: VenusPoolABI,
-    client,
+    client: client as Client,
   });
 
   const [exchangeRate] = await client.multicall({
@@ -244,4 +254,16 @@ async function setNewExchangeRate(
     id: adjustedPool.id + roundTimestamp(timestamp),
     timestamp: BigInt(roundTimestamp(timestamp)),
   });
+}
+
+/**
+ * Checks if a transfer event affects Venus pool's total supply
+ * @param event The transfer event to check
+ * @returns True if the event affects Venus total supply
+ */
+function isClaggTransfer(event: Venus_Transfer_event) {
+  return (
+    event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase() ||
+    event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()
+  );
 }

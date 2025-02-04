@@ -5,10 +5,6 @@ networks:
   - id: 324
     start_block: 9767
     contracts:
-      - name: ERC20 # Both for ERC20Transfer and Venus
-        handler: src/ERC20Handler.ts
-        events:
-          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: SyncswapFactory
         handler: src/SyncswapHandler.ts
         address:
@@ -24,17 +20,9 @@ networks:
         handler: src/SyncswapHandler.ts
         events:
           - event: "Sync(uint reserve0, uint reserve1)"
-            field_selection:
-              transaction_fields:
-                - "from"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
           - event: "Mint(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
-            field_selection:
-              transaction_fields:
-                - "from"
           - event: "Burn(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
-            field_selection:
-              transaction_fields:
-                - "from"
       - name: Aave
         handler: src/AaveHandler.ts
         address:
@@ -46,6 +34,7 @@ networks:
         events:
           - event: "Mint(address indexed caller, address indexed onBehalfOf, uint256 value, uint256 balanceIncrease, uint256 index)"
           - event: "Burn(address indexed from, address indexed target, uint256 value, uint256 balanceIncrease, uint256 index)"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: Venus
         handler: src/VenusHandler.ts
         address:
@@ -61,6 +50,7 @@ networks:
           - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
           - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
           - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: ClaggMain
         handler: src/ClaggHandler.ts
         address: 0x7f73934F333a25B456Dc9B8b62A19f211c991f1c
