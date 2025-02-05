@@ -3,7 +3,7 @@ name: clave-indexer
 description: Clave Balances Indexer
 networks:
   - id: 324
-    start_block: 55327602
+    start_block: 9767
     contracts:
       - name: SyncswapFactory
         handler: src/SyncswapHandler.ts
