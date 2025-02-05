@@ -20,6 +20,7 @@ import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { SyncswapPoolABI } from "./abi/SyncswapPool";
 import { client } from "./viem/Client";
 import { syncswapCache } from "./utils/SyncswapCache";
+import { shareToAmountSyncswap } from "./utils/shareToAmount";
 
 /**
  * Handles new pool creation events from the Syncswap Factory
@@ -92,9 +93,6 @@ SyncswapPool.Transfer.handlerWithLoader({
         BigInt(event.block.number)
       );
 
-      // Update historical pool records
-      setHistoricalSyncswapPool(pool, context, event.block.timestamp);
-
       if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
         const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
 
@@ -127,10 +125,23 @@ SyncswapPool.Transfer.handlerWithLoader({
       ]);
 
       if (claveAddresses.has(fromAddress)) {
+        const { token0Value, token1Value } = await shareToAmountSyncswap(
+          poolAddress as Address,
+          pool.reserve0,
+          pool.reserve1,
+          pool.totalSupply,
+          senderAccountBalance ? senderAccountBalance.shareBalance - event.params.value : 0n,
+          pool.underlyingToken as Address,
+          pool.underlyingToken2 as Address,
+          BigInt(event.block.number),
+          fromAddress as Address
+        );
         // Update sender's account balance
         const prevAccountObject: SyncswapEarnBalance = {
           id: fromAddress + poolAddress,
           shareBalance: senderAccountBalance == undefined ? 0n : senderAccountBalance.shareBalance,
+          tokenAmount0: senderAccountBalance == undefined ? 0n : senderAccountBalance.tokenAmount0,
+          tokenAmount1: senderAccountBalance == undefined ? 0n : senderAccountBalance.tokenAmount1,
           userAddress: fromAddress,
           syncswapPool_id: poolAddress,
         };
@@ -138,6 +149,8 @@ SyncswapPool.Transfer.handlerWithLoader({
         const accountObject = {
           ...prevAccountObject,
           shareBalance: prevAccountObject.shareBalance - event.params.value,
+          tokenAmount0: token0Value,
+          tokenAmount1: token1Value,
         };
 
         context.SyncswapEarnBalance.set(accountObject);
@@ -145,11 +158,28 @@ SyncswapPool.Transfer.handlerWithLoader({
       }
 
       if (claveAddresses.has(toAddress)) {
+        const { token0Value, token1Value } = await shareToAmountSyncswap(
+          poolAddress as Address,
+          pool.reserve0,
+          pool.reserve1,
+          pool.totalSupply,
+          receiverAccountBalance
+            ? receiverAccountBalance.shareBalance + event.params.value
+            : event.params.value,
+          pool.underlyingToken as Address,
+          pool.underlyingToken2 as Address,
+          BigInt(event.block.number),
+          toAddress as Address
+        );
         // Update receiver's account balance
         const prevAccountObject: SyncswapEarnBalance = {
           id: toAddress + poolAddress,
           shareBalance:
             receiverAccountBalance == undefined ? 0n : receiverAccountBalance.shareBalance,
+          tokenAmount0:
+            receiverAccountBalance == undefined ? 0n : receiverAccountBalance.tokenAmount0,
+          tokenAmount1:
+            receiverAccountBalance == undefined ? 0n : receiverAccountBalance.tokenAmount1,
           userAddress: toAddress,
           syncswapPool_id: poolAddress,
         };
@@ -157,6 +187,8 @@ SyncswapPool.Transfer.handlerWithLoader({
         const accountObject = {
           ...prevAccountObject,
           shareBalance: prevAccountObject.shareBalance + event.params.value,
+          tokenAmount0: token0Value,
+          tokenAmount1: token1Value,
         };
 
         context.SyncswapEarnBalance.set(accountObject);
@@ -186,20 +218,18 @@ async function createOrGetSyncswapPool(
       client: client as Client,
     });
 
-    const [name, symbol, poolType, token0Precision, token1Precision, totalSupply, token0, token1] =
-      await client.multicall({
-        contracts: [
-          { ...contract, functionName: "name" },
-          { ...contract, functionName: "symbol" },
-          { ...contract, functionName: "poolType" },
-          { ...contract, functionName: "token0PrecisionMultiplier" },
-          { ...contract, functionName: "token1PrecisionMultiplier" },
-          { ...contract, functionName: "totalSupply" },
-          { ...contract, functionName: "token0" },
-          { ...contract, functionName: "token1" },
-        ],
-        blockNumber,
-      });
+    const [name, symbol, poolType, totalSupply, token0, token1, reserves] = await client.multicall({
+      contracts: [
+        { ...contract, functionName: "name" },
+        { ...contract, functionName: "symbol" },
+        { ...contract, functionName: "poolType" },
+        { ...contract, functionName: "totalSupply" },
+        { ...contract, functionName: "token0" },
+        { ...contract, functionName: "token1" },
+        { ...contract, functionName: "getReserves" },
+      ],
+      blockNumber,
+    });
 
     // Validate results
     if (!name.result || !symbol.result || !poolType.result) {
@@ -218,10 +248,8 @@ async function createOrGetSyncswapPool(
       name: name.result as string,
       symbol: symbol.result as string,
       poolType: poolType.result as bigint,
-      token0PrecisionMultiplier: (token0Precision.result as bigint) ?? 1n,
-      token1PrecisionMultiplier: (token1Precision.result as bigint) ?? 1n,
-      reserve0: 0n,
-      reserve1: 0n,
+      reserve0: (reserves.result as bigint[])[0] ?? 0n,
+      reserve1: (reserves.result as bigint[])[1] ?? 0n,
       totalSupply: (totalSupply.result as bigint) ?? 0n,
     };
 
@@ -264,28 +292,6 @@ function setHistoricalSyncswapPoolBalances(
   context.HistoricalSyncswapEarnBalance1Month.set({
     ...accountObject,
     id: accountObject.id + roundTimestamp(timestamp, 86400 * 30),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
-  });
-}
-
-function setHistoricalSyncswapPool(
-  poolObject: SyncswapPool_t,
-  context: handlerContext,
-  timestamp: number
-) {
-  context.HistoricalSyncswapPoolDaily.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp),
-    timestamp: BigInt(roundTimestamp(timestamp)),
-  });
-  context.HistoricalSyncswapPoolWeekly.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp, 86400 * 7),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
-  });
-  context.HistoricalSyncswapPoolMonthly.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp, 86400 * 30),
     timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
   });
 }

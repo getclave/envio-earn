@@ -136,10 +136,13 @@ type HistoricalVenusPoolMonthly @index(fields: ["address", "timestamp"]) {
 
 #! Syncswap Protocol
 
-type SyncswapEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
+type SyncswapEarnBalance
+  @index(fields: ["userAddress", "shareBalance", "tokenAmount0", "tokenAmount1"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
+  tokenAmount0: BigInt! @index
+  tokenAmount1: BigInt! @index
   syncswapPool: SyncswapPool @index
 }
 
@@ -147,6 +150,8 @@ type HistoricalSyncswapEarnBalance4Hours @index(fields: ["userAddress", "timesta
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
+  tokenAmount0: BigInt!
+  tokenAmount1: BigInt!
   syncswapPool: SyncswapPool @index
   timestamp: BigInt! @index
 }
@@ -155,6 +160,8 @@ type HistoricalSyncswapEarnBalance1Day @index(fields: ["userAddress", "timestamp
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
+  tokenAmount0: BigInt!
+  tokenAmount1: BigInt!
   syncswapPool: SyncswapPool @index
   timestamp: BigInt! @index
 }
@@ -163,6 +170,8 @@ type HistoricalSyncswapEarnBalance7Days @index(fields: ["userAddress", "timestam
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
+  tokenAmount0: BigInt!
+  tokenAmount1: BigInt!
   syncswapPool: SyncswapPool @index
   timestamp: BigInt! @index
 }
@@ -171,6 +180,8 @@ type HistoricalSyncswapEarnBalance1Month @index(fields: ["userAddress", "timesta
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
+  tokenAmount0: BigInt!
+  tokenAmount1: BigInt!
   syncswapPool: SyncswapPool @index
   timestamp: BigInt! @index
 }
@@ -183,56 +194,6 @@ type SyncswapPool {
   underlyingToken: String
   underlyingToken2: String
   poolType: BigInt
-  token0PrecisionMultiplier: BigInt
-  token1PrecisionMultiplier: BigInt
-  reserve0: BigInt!
-  reserve1: BigInt!
-  totalSupply: BigInt!
-}
-
-type HistoricalSyncswapPoolDaily @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  underlyingToken2: String
-  poolType: BigInt
-  token0PrecisionMultiplier: BigInt
-  token1PrecisionMultiplier: BigInt
-  reserve0: BigInt!
-  reserve1: BigInt!
-  totalSupply: BigInt!
-}
-
-type HistoricalSyncswapPoolWeekly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  underlyingToken2: String
-  poolType: BigInt
-  token0PrecisionMultiplier: BigInt
-  token1PrecisionMultiplier: BigInt
-  reserve0: BigInt!
-  reserve1: BigInt!
-  totalSupply: BigInt!
-}
-
-type HistoricalSyncswapPoolMonthly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  underlyingToken2: String
-  poolType: BigInt
-  token0PrecisionMultiplier: BigInt
-  token1PrecisionMultiplier: BigInt
   reserve0: BigInt!
   reserve1: BigInt!
   totalSupply: BigInt!
