@@ -47,7 +47,7 @@ SyncswapPool.Mint.handlerWithLoader({
       claveAddresses = new Set([event.params.to.toLowerCase()]);
     }
     if (
-      !claveAddresses.has(event.params.to.toLowerCase()) ||
+      !claveAddresses.has(event.params.to.toLowerCase()) &&
       ClaggMainAddress.toLowerCase() != event.params.to.toLowerCase()
     ) {
       return;
@@ -121,7 +121,7 @@ SyncswapPool.Burn.handlerWithLoader({
       claveAddresses = new Set([event.params.to.toLowerCase()]);
     }
     if (
-      !claveAddresses.has(event.params.to.toLowerCase()) ||
+      !claveAddresses.has(event.params.to.toLowerCase()) &&
       ClaggMainAddress.toLowerCase() != event.params.to.toLowerCase()
     ) {
       return;

@@ -144,7 +144,7 @@ describe("Protocol Handlers", () => {
       });
     });
 
-    it("should handle user transfers and balances", async () => {
+    it("should handle Clagg interactions", async () => {
       const baseTimestamp = 86400; // One day in seconds
       const dailyTimestamp = Math.floor(baseTimestamp / 86400) * 86400;
       const weeklyTimestamp = Math.floor(baseTimestamp / (86400 * 7)) * (86400 * 7);
@@ -241,137 +241,54 @@ describe("Protocol Handlers", () => {
         shareBalance: 100n,
       });
 
-      const mockTransfer = SyncswapPool.Transfer.createMockEvent({
+      // Test mint to Clagg
+      const mockMint = SyncswapPool.Mint.createMockEvent({
         mockEventData: {
           srcAddress: poolAddress,
           block: {
             timestamp: baseTimestamp,
+            number: 1,
           },
         },
-        from: userAddress1,
-        to: userAddress2,
-        value: 100n,
-      });
-
-      const mockDbAfterTransfer = await SyncswapPool.Transfer.processEvent({
-        event: mockTransfer,
-        mockDb,
-      });
-
-      // Check user balances
-      const senderBalance = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
-        userAddress1.toLowerCase() + poolAddress.toLowerCase()
-      );
-      assert.equal(senderBalance?.shareBalance, -100n, "Sender balance should be reduced");
-
-      const receiverBalance = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
-        userAddress2.toLowerCase() + poolAddress.toLowerCase()
-      );
-      assert.equal(receiverBalance?.shareBalance, 100n, "Receiver balance should be increased");
-
-      // Check historical records
-      const historicalBalance4h =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance4Hours.get(
-          userAddress1.toLowerCase() +
-            poolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp).toString()
-        );
-      assert.equal(
-        historicalBalance4h?.shareBalance,
-        0n,
-        "Historical 4-hour balance should be 0 after transfer"
-      );
-
-      const historicalBalance1d =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Day.get(
-          userAddress1.toLowerCase() +
-            poolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp, 86400).toString()
-        );
-      assert.equal(
-        historicalBalance1d?.shareBalance,
-        0n,
-        "Historical daily balance should be 0 after transfer"
-      );
-
-      const historicalBalance7d =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance7Days.get(
-          userAddress1.toLowerCase() +
-            poolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp, 86400 * 7).toString()
-        );
-      assert.equal(
-        historicalBalance7d?.shareBalance,
-        0n,
-        "Historical weekly balance should be 0 after transfer"
-      );
-
-      const historicalBalance1m =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Month.get(
-          userAddress1.toLowerCase() +
-            poolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp, 86400 * 30).toString()
-        );
-      assert.equal(
-        historicalBalance1m?.shareBalance,
-        0n,
-        "Historical monthly balance should be 0 after transfer"
-      );
-    });
-
-    it("should handle Clagg integration", async () => {
-      // Test transfer to Clagg
-      const mockTransferToClagg = SyncswapPool.Transfer.createMockEvent({
-        mockEventData: {
-          srcAddress: poolAddress,
-          block: {
-            timestamp: 1500,
-          },
-        },
-        from: userAddress1,
         to: ClaggMainAddress,
-        value: 100n,
+        liquidity: 100n,
       });
 
-      const mockDbAfterToClagg = await SyncswapPool.Transfer.processEvent({
-        event: mockTransferToClagg,
+      const mockDbAfterMint = await SyncswapPool.Mint.processEvent({
+        event: mockMint,
         mockDb,
       });
 
-      const claggPoolAfterDeposit = mockDbAfterToClagg.entities.ClaggPool.get(
-        poolAddress.toLowerCase()
-      );
+      const claggPoolAfterMint = mockDbAfterMint.entities.ClaggPool.get(poolAddress.toLowerCase());
       assert.equal(
-        claggPoolAfterDeposit?.totalSupply,
+        claggPoolAfterMint?.totalSupply,
         100n,
-        "Clagg pool supply should increase after deposit"
+        "Clagg pool supply should increase after mint"
       );
 
-      // Test transfer from Clagg
-      const mockTransferFromClagg = SyncswapPool.Transfer.createMockEvent({
+      // Test burn from Clagg
+      const mockBurn = SyncswapPool.Burn.createMockEvent({
         mockEventData: {
           srcAddress: poolAddress,
           block: {
-            timestamp: 1600,
+            timestamp: baseTimestamp + 100,
+            number: 2,
           },
         },
-        from: ClaggMainAddress,
-        to: userAddress1,
-        value: 50n,
+        to: ClaggMainAddress,
+        liquidity: 50n,
       });
 
-      const mockDbAfterFromClagg = await SyncswapPool.Transfer.processEvent({
-        event: mockTransferFromClagg,
-        mockDb: mockDbAfterToClagg,
+      const mockDbAfterBurn = await SyncswapPool.Burn.processEvent({
+        event: mockBurn,
+        mockDb: mockDbAfterMint,
       });
 
-      const claggPoolAfterWithdraw = mockDbAfterFromClagg.entities.ClaggPool.get(
-        poolAddress.toLowerCase()
-      );
+      const claggPoolAfterBurn = mockDbAfterBurn.entities.ClaggPool.get(poolAddress.toLowerCase());
       assert.equal(
-        claggPoolAfterWithdraw?.totalSupply,
+        claggPoolAfterBurn?.totalSupply,
         50n,
-        "Clagg pool supply should decrease after withdrawal"
+        "Clagg pool supply should decrease after burn"
       );
     });
   });
@@ -1066,78 +983,96 @@ describe("Protocol Handlers", () => {
     });
 
     it("should create historical entities for Syncswap events", async () => {
-      // Initialize sender balance
-      mockDb.entities.SyncswapEarnBalance.set({
-        id: userAddress1.toLowerCase() + syncswapPoolAddress.toLowerCase(),
-        userAddress: userAddress1.toLowerCase(),
-        syncswapPool_id: syncswapPoolAddress.toLowerCase(),
-        shareBalance: 100n,
+      // Initialize Clagg pool
+      mockDb.entities.ClaggPool.set({
+        id: syncswapPoolAddress.toLowerCase(),
+        address: syncswapPoolAddress.toLowerCase(),
+        totalShares: 0n,
+        totalSupply: 0n,
       });
 
-      const mockTransfer = SyncswapPool.Transfer.createMockEvent({
+      // Test mint to Clagg
+      const mockMint = SyncswapPool.Mint.createMockEvent({
         mockEventData: {
           srcAddress: syncswapPoolAddress,
           block: {
             timestamp: baseTimestamp,
+            number: 1,
           },
         },
-        from: userAddress1,
-        to: userAddress2,
-        value: 100n,
+        to: ClaggMainAddress,
+        liquidity: 100n,
       });
 
-      const mockDbAfterTransfer = await SyncswapPool.Transfer.processEvent({
-        event: mockTransfer,
+      const mockDbAfterMint = await SyncswapPool.Mint.processEvent({
+        event: mockMint,
         mockDb,
       });
 
-      // Check historical balance records
-      const historicalBalance4h =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance4Hours.get(
-          userAddress1.toLowerCase() +
-            syncswapPoolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp).toString()
-        );
+      const claggPoolAfterMint = mockDbAfterMint.entities.ClaggPool.get(
+        syncswapPoolAddress.toLowerCase()
+      );
       assert.equal(
-        historicalBalance4h?.shareBalance,
-        0n,
-        "Historical 4-hour balance should be 0 after transfer"
+        claggPoolAfterMint?.totalSupply,
+        100n,
+        "Clagg pool supply should increase after mint"
       );
 
-      const historicalBalance1d =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Day.get(
-          userAddress1.toLowerCase() +
-            syncswapPoolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp, 86400).toString()
-        );
+      // Test burn from Clagg
+      const mockBurn = SyncswapPool.Burn.createMockEvent({
+        mockEventData: {
+          srcAddress: syncswapPoolAddress,
+          block: {
+            timestamp: baseTimestamp + 100,
+            number: 2,
+          },
+        },
+        to: ClaggMainAddress,
+        liquidity: 50n,
+      });
+
+      const mockDbAfterBurn = await SyncswapPool.Burn.processEvent({
+        event: mockBurn,
+        mockDb: mockDbAfterMint,
+      });
+
+      const claggPoolAfterBurn = mockDbAfterBurn.entities.ClaggPool.get(
+        syncswapPoolAddress.toLowerCase()
+      );
       assert.equal(
-        historicalBalance1d?.shareBalance,
-        0n,
-        "Historical daily balance should be 0 after transfer"
+        claggPoolAfterBurn?.totalSupply,
+        50n,
+        "Clagg pool supply should decrease after burn"
       );
 
-      const historicalBalance7d =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance7Days.get(
-          userAddress1.toLowerCase() +
-            syncswapPoolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp, 86400 * 7).toString()
-        );
+      // Check historical pool records
+      const historicalPoolDaily = mockDbAfterBurn.entities.HistoricalClaggPoolDaily.get(
+        syncswapPoolAddress.toLowerCase() + roundTimestamp(baseTimestamp + 100).toString()
+      );
       assert.equal(
-        historicalBalance7d?.shareBalance,
-        0n,
-        "Historical weekly balance should be 0 after transfer"
+        historicalPoolDaily?.totalSupply,
+        50n,
+        "Historical daily pool supply should be updated"
       );
 
-      const historicalBalance1m =
-        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Month.get(
-          userAddress1.toLowerCase() +
-            syncswapPoolAddress.toLowerCase() +
-            roundTimestamp(baseTimestamp, 86400 * 30).toString()
-        );
+      const historicalPoolWeekly = mockDbAfterBurn.entities.HistoricalClaggPoolWeekly.get(
+        syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp + 100, 86400 * 7).toString()
+      );
       assert.equal(
-        historicalBalance1m?.shareBalance,
-        0n,
-        "Historical monthly balance should be 0 after transfer"
+        historicalPoolWeekly?.totalSupply,
+        50n,
+        "Historical weekly pool supply should be updated"
+      );
+
+      const historicalPoolMonthly = mockDbAfterBurn.entities.HistoricalClaggPoolMonthly.get(
+        syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp + 100, 86400 * 30).toString()
+      );
+      assert.equal(
+        historicalPoolMonthly?.totalSupply,
+        50n,
+        "Historical monthly pool supply should be updated"
       );
     });
 
