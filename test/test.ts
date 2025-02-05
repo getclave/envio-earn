@@ -685,6 +685,232 @@ describe("Protocol Handlers", () => {
         "Clagg pool supply should decrease after withdrawal"
       );
     });
+
+    it("should create historical entities for Aave events", async () => {
+      // Initialize user balance before transfer
+      mockDb.entities.AaveEarnBalance.set({
+        id: userAddress1.toLowerCase() + aavePoolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        aavePool_id: aavePoolAddress.toLowerCase(),
+        shareBalance: 100n,
+        userIndex: 2000000n,
+      });
+
+      // Test Transfer event for historical tracking
+      const mockTransfer = Aave.Transfer.createMockEvent({
+        mockEventData: {
+          srcAddress: aavePoolAddress,
+          block: {
+            timestamp: baseTimestamp,
+          },
+        },
+        from: userAddress1,
+        to: userAddress2,
+        value: 100n,
+      });
+
+      const mockDbAfterTransfer = await Aave.Transfer.processEvent({
+        event: mockTransfer,
+        mockDb,
+      });
+
+      // Check historical balances
+      // Check 4-hour historical balance
+      const historicalBalance4h = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance4Hours.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp).toString()
+      );
+      assert.equal(
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 after transfer"
+      );
+
+      // Check daily historical balance
+      const historicalBalance1d = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance1Day.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400).toString()
+      );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 after transfer"
+      );
+
+      // Check weekly historical balance
+      const historicalBalance7d = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance7Days.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 7).toString()
+      );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 after transfer"
+      );
+
+      // Check monthly historical balance
+      const historicalBalance1m = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance1Month.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 30).toString()
+      );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 after transfer"
+      );
+    });
+
+    it("should create historical entities for Clagg events", async () => {
+      // Initialize user balance before deposit
+      mockDb.entities.ClaggEarnBalance.set({
+        id: userAddress1.toLowerCase() + syncswapPoolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        claggPool_id: syncswapPoolAddress.toLowerCase(),
+        shareBalance: 0n,
+        totalDeposits: 0n,
+        totalWithdrawals: 0n,
+      });
+
+      // Test Deposit event for historical tracking
+      const mockDeposit = ClaggMain.Deposit.createMockEvent({
+        mockEventData: {
+          srcAddress: ClaggMainAddress,
+          block: {
+            timestamp: baseTimestamp,
+          },
+        },
+        user: userAddress1,
+        pool: syncswapPoolAddress,
+        amount: 100n,
+        shares: 100n,
+      });
+
+      const mockDbAfterDeposit = await ClaggMain.Deposit.processEvent({
+        event: mockDeposit,
+        mockDb,
+      });
+
+      // Check historical balances after deposit
+      // Check 4-hour historical balance
+      const historicalBalance4h = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance4Hours.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp).toString()
+      );
+      assert.equal(
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 before deposit"
+      );
+
+      // Check daily historical balance
+      const historicalBalance1d = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance1Day.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400).toString()
+      );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 before deposit"
+      );
+
+      // Check weekly historical balance
+      const historicalBalance7d = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance7Days.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 7).toString()
+      );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 before deposit"
+      );
+
+      // Check monthly historical balance
+      const historicalBalance1m = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance1Month.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 30).toString()
+      );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 before deposit"
+      );
+
+      // Test Withdraw event
+      const mockWithdraw = ClaggMain.Withdraw.createMockEvent({
+        mockEventData: {
+          srcAddress: ClaggMainAddress,
+          block: {
+            timestamp: baseTimestamp + 1000,
+          },
+        },
+        user: userAddress1,
+        pool: syncswapPoolAddress,
+        amount: 50n,
+        shares: 50n,
+      });
+
+      const mockDbAfterWithdraw = await ClaggMain.Withdraw.processEvent({
+        event: mockWithdraw,
+        mockDb: mockDbAfterDeposit,
+      });
+
+      // Check historical balances after withdrawal
+      const historicalBalance4hAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance4Hours.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000).toString()
+        );
+      assert.equal(
+        historicalBalance4hAfterWithdraw?.shareBalance,
+        100n,
+        "Historical 4-hour balance should be 100 before withdrawal"
+      );
+
+      const historicalBalance1dAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance1Day.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000, 86400).toString()
+        );
+      assert.equal(
+        historicalBalance1dAfterWithdraw?.shareBalance,
+        100n,
+        "Historical daily balance should be 100 before withdrawal"
+      );
+
+      const historicalBalance7dAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance7Days.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000, 86400 * 7).toString()
+        );
+      assert.equal(
+        historicalBalance7dAfterWithdraw?.shareBalance,
+        100n,
+        "Historical weekly balance should be 100 before withdrawal"
+      );
+
+      const historicalBalance1mAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance1Month.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000, 86400 * 30).toString()
+        );
+      assert.equal(
+        historicalBalance1mAfterWithdraw?.shareBalance,
+        100n,
+        "Historical monthly balance should be 100 before withdrawal"
+      );
+    });
   });
 
   describe("Clagg", () => {
@@ -995,47 +1221,95 @@ describe("Protocol Handlers", () => {
     });
 
     it("should create historical entities for Aave events", async () => {
-      // Test Mint historical entity with initial index
-      const mockMint = Aave.Mint.createMockEvent({
+      // Initialize user balance before transfer
+      mockDb.entities.AaveEarnBalance.set({
+        id: userAddress1.toLowerCase() + aavePoolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        aavePool_id: aavePoolAddress.toLowerCase(),
+        shareBalance: 100n,
+        userIndex: 2000000n,
+      });
+
+      // Test Transfer event for historical tracking
+      const mockTransfer = Aave.Transfer.createMockEvent({
         mockEventData: {
           srcAddress: aavePoolAddress,
           block: {
             timestamp: baseTimestamp,
           },
         },
-        caller: userAddress1,
-        onBehalfOf: userAddress1,
+        from: userAddress1,
+        to: userAddress2,
         value: 100n,
-        balanceIncrease: 100n,
-        index: 2000000n,
       });
 
-      const mockDbAfterMint = await Aave.Mint.processEvent({
-        event: mockMint,
+      const mockDbAfterTransfer = await Aave.Transfer.processEvent({
+        event: mockTransfer,
         mockDb,
       });
 
-      const historicalAave = mockDbAfterMint.entities.HistoricalAavePool.get(
-        aavePoolAddress.toLowerCase() + baseTimestamp.toString()
+      // Check historical balances
+      // Check 4-hour historical balance
+      const historicalBalance4h = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance4Hours.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp).toString()
       );
-      assert.equal(historicalAave?.lastIndex, 2000000n, "Historical index should be recorded");
       assert.equal(
-        historicalAave?.timestamp,
-        BigInt(baseTimestamp),
-        "Historical timestamp should be recorded"
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 after transfer"
+      );
+
+      // Check daily historical balance
+      const historicalBalance1d = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance1Day.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400).toString()
+      );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 after transfer"
+      );
+
+      // Check weekly historical balance
+      const historicalBalance7d = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance7Days.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 7).toString()
+      );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 after transfer"
+      );
+
+      // Check monthly historical balance
+      const historicalBalance1m = mockDbAfterTransfer.entities.HistoricalAaveEarnBalance1Month.get(
+        userAddress1.toLowerCase() +
+          aavePoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 30).toString()
+      );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 after transfer"
       );
     });
 
     it("should create historical entities for Clagg events", async () => {
-      // Initialize with zero shares
-      mockDb.entities.ClaggPool.set({
-        id: syncswapPoolAddress.toLowerCase(),
-        address: syncswapPoolAddress,
-        totalShares: 0n,
-        totalSupply: 0n,
+      // Initialize user balance before deposit
+      mockDb.entities.ClaggEarnBalance.set({
+        id: userAddress1.toLowerCase() + syncswapPoolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        claggPool_id: syncswapPoolAddress.toLowerCase(),
+        shareBalance: 0n,
+        totalDeposits: 0n,
+        totalWithdrawals: 0n,
       });
 
-      // Test Deposit historical entity
+      // Test Deposit event for historical tracking
       const mockDeposit = ClaggMain.Deposit.createMockEvent({
         mockEventData: {
           srcAddress: ClaggMainAddress,
@@ -1054,18 +1328,121 @@ describe("Protocol Handlers", () => {
         mockDb,
       });
 
-      const historicalClagg = mockDbAfterDeposit.entities.HistoricalClaggPool.get(
-        syncswapPoolAddress.toLowerCase() + baseTimestamp.toString()
+      // Check historical balances after deposit
+      // Check 4-hour historical balance
+      const historicalBalance4h = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance4Hours.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp).toString()
       );
       assert.equal(
-        historicalClagg?.totalShares,
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 before deposit"
+      );
+
+      // Check daily historical balance
+      const historicalBalance1d = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance1Day.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400).toString()
+      );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 before deposit"
+      );
+
+      // Check weekly historical balance
+      const historicalBalance7d = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance7Days.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 7).toString()
+      );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 before deposit"
+      );
+
+      // Check monthly historical balance
+      const historicalBalance1m = mockDbAfterDeposit.entities.HistoricalClaggEarnBalance1Month.get(
+        userAddress1.toLowerCase() +
+          syncswapPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 30).toString()
+      );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 before deposit"
+      );
+
+      // Test Withdraw event
+      const mockWithdraw = ClaggMain.Withdraw.createMockEvent({
+        mockEventData: {
+          srcAddress: ClaggMainAddress,
+          block: {
+            timestamp: baseTimestamp + 1000,
+          },
+        },
+        user: userAddress1,
+        pool: syncswapPoolAddress,
+        amount: 50n,
+        shares: 50n,
+      });
+
+      const mockDbAfterWithdraw = await ClaggMain.Withdraw.processEvent({
+        event: mockWithdraw,
+        mockDb: mockDbAfterDeposit,
+      });
+
+      // Check historical balances after withdrawal
+      const historicalBalance4hAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance4Hours.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000).toString()
+        );
+      assert.equal(
+        historicalBalance4hAfterWithdraw?.shareBalance,
         100n,
-        "Historical total shares should be recorded"
+        "Historical 4-hour balance should be 100 before withdrawal"
       );
+
+      const historicalBalance1dAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance1Day.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000, 86400).toString()
+        );
       assert.equal(
-        historicalClagg?.timestamp,
-        BigInt(baseTimestamp),
-        "Historical timestamp should be recorded"
+        historicalBalance1dAfterWithdraw?.shareBalance,
+        100n,
+        "Historical daily balance should be 100 before withdrawal"
+      );
+
+      const historicalBalance7dAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance7Days.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000, 86400 * 7).toString()
+        );
+      assert.equal(
+        historicalBalance7dAfterWithdraw?.shareBalance,
+        100n,
+        "Historical weekly balance should be 100 before withdrawal"
+      );
+
+      const historicalBalance1mAfterWithdraw =
+        mockDbAfterWithdraw.entities.HistoricalClaggEarnBalance1Month.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp + 1000, 86400 * 30).toString()
+        );
+      assert.equal(
+        historicalBalance1mAfterWithdraw?.shareBalance,
+        100n,
+        "Historical monthly balance should be 100 before withdrawal"
       );
     });
   });
