@@ -73,7 +73,6 @@ class SyncswapCache {
   }
 
   private async updateInMemoryCache() {
-    console.log("updating in memory cache");
     const members = await this.redisCommand!.sMembers(this.CACHE_KEY);
     this.inMemoryCache = new Set(members);
   }

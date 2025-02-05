@@ -3,7 +3,7 @@ name: clave-indexer
 description: Clave Balances Indexer
 networks:
   - id: 324
-    start_block: 9767
+    start_block: 55327602
     contracts:
       - name: SyncswapFactory
         handler: src/SyncswapHandler.ts
@@ -19,8 +19,7 @@ networks:
       - name: SyncswapPool
         handler: src/SyncswapHandler.ts
         events:
-          - event: "Mint(address indexed sender, uint256 amount0, uint256 amount1, uint256 liquidity, address indexed to)"
-          - event: "Burn(address indexed sender, uint256 amount0, uint256 amount1, uint256 liquidity, address indexed to)"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: Aave
         handler: src/AaveHandler.ts
         address:
@@ -57,3 +56,5 @@ rollback_on_reorg: false
 #* 24805087 clave first block
 #* 52887531 clagg first block
 #* 44671523 aave first block
+
+# 55327602

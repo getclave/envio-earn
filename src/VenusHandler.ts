@@ -17,7 +17,10 @@ import { ClaggMainAddress } from "./constants/ClaggAddresses";
 Venus.Transfer.handlerWithLoader({
   loader: async ({ event }) => {
     return {
-      claveAddresses: await walletCache.bulkCheckClaveWallets([event.params.from.toLowerCase()]),
+      claveAddresses: await walletCache.bulkCheckClaveWallets([
+        event.params.from.toLowerCase(),
+        event.params.to.toLowerCase(),
+      ]),
     };
   },
   handler: async ({ event, context, loaderReturn }) => {
