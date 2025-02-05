@@ -244,8 +244,8 @@ function setHistoricalSyncswapPoolBalances(
 ) {
   context.HistoricalSyncswapEarnBalance4Hours.set({
     ...accountObject,
-    id: accountObject.id + roundTimestamp(timestamp),
-    timestamp: BigInt(roundTimestamp(timestamp)),
+    id: accountObject.id + roundTimestamp(timestamp, 3600 * 4),
+    timestamp: BigInt(roundTimestamp(timestamp, 3600 * 4)),
   });
   context.HistoricalSyncswapEarnBalance1Day.set({
     ...accountObject,
