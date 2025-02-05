@@ -1,5 +1,5 @@
 import { ClaggEarnBalance, ClaggMain, handlerContext } from "generated";
-import { Account_t, ClaggEarnBalance_t, ClaggPool_t } from "generated/src/db/Entities.gen";
+import { ClaggEarnBalance_t, ClaggPool_t } from "generated/src/db/Entities.gen";
 import { Address } from "viem";
 import { roundTimestamp } from "./utils/helpers";
 
@@ -24,6 +24,10 @@ ClaggMain.Deposit.handlerWithLoader({
   handler: async ({ event, context, loaderReturn }) => {
     const { userBalance } = loaderReturn;
     const pool = await getOrCreateClaggPool(event.params.pool.toLowerCase() as Address, context);
+    context.Account.set({
+      id: event.params.user.toLowerCase(),
+      address: event.params.user.toLowerCase(),
+    });
     const adjustedPool = {
       ...pool,
       totalShares: pool.totalShares + event.params.shares,
@@ -49,13 +53,6 @@ ClaggMain.Deposit.handlerWithLoader({
 
     context.ClaggEarnBalance.set(createdUserBalance);
     setHistoricalClaggEarnBalance(previousUserBalance, context, event.block.timestamp);
-
-    const createdUser: Account_t = {
-      id: event.params.user.toLowerCase(),
-      address: event.params.user.toLowerCase(),
-    };
-
-    context.Account.set(createdUser);
   },
 });
 
@@ -80,6 +77,10 @@ ClaggMain.Withdraw.handlerWithLoader({
   handler: async ({ event, context, loaderReturn }) => {
     const { userBalance } = loaderReturn;
     const pool = await getOrCreateClaggPool(event.params.pool.toLowerCase() as Address, context);
+    context.Account.set({
+      id: event.params.user.toLowerCase(),
+      address: event.params.user.toLowerCase(),
+    });
     const adjustedPool = {
       ...pool,
       totalShares: pool.totalShares - event.params.shares,
@@ -105,13 +106,6 @@ ClaggMain.Withdraw.handlerWithLoader({
 
     context.ClaggEarnBalance.set(createdUserBalance);
     setHistoricalClaggEarnBalance(previousUserBalance, context, event.block.timestamp);
-
-    const createdUser: Account_t = {
-      id: event.params.user.toLowerCase(),
-      address: event.params.user.toLowerCase(),
-    };
-
-    context.Account.set(createdUser);
   },
 });
 

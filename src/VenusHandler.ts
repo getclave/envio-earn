@@ -39,6 +39,20 @@ Venus.Transfer.handlerWithLoader({
       }
     }
 
+    if (claveAddresses.has(event.params.from.toLowerCase())) {
+      context.Account.set({
+        id: event.params.from.toLowerCase(),
+        address: event.params.from.toLowerCase(),
+      });
+    }
+
+    if (claveAddresses.has(event.params.to.toLowerCase())) {
+      context.Account.set({
+        id: event.params.to.toLowerCase(),
+        address: event.params.to.toLowerCase(),
+      });
+    }
+
     const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
 
     await setNewExchangeRate(

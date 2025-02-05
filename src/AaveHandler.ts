@@ -40,11 +40,6 @@ Aave.Mint.handlerWithLoader({
 
     setHistoricalAavePool(adjustedPool, context, event.block.timestamp);
 
-    context.Account.set({
-      id: event.params.onBehalfOf.toLowerCase(),
-      address: event.params.onBehalfOf.toLowerCase(),
-    });
-
     const previousAaveEarnBalance: AaveEarnBalance = {
       id: event.params.onBehalfOf.toLowerCase() + createdPool.id,
       userAddress: event.params.onBehalfOf.toLowerCase(),
@@ -92,11 +87,6 @@ Aave.Burn.handlerWithLoader({
     context.AavePool.set(adjustedPool);
 
     setHistoricalAavePool(adjustedPool, context, event.block.timestamp);
-
-    context.Account.set({
-      id: event.params.from.toLowerCase(),
-      address: event.params.from.toLowerCase(),
-    });
 
     const previousAaveEarnBalance: AaveEarnBalance = {
       id: event.params.from.toLowerCase() + createdPool.id,
@@ -161,6 +151,20 @@ Aave.Transfer.handlerWithLoader({
       context.ClaggPool.set(adjustedPool);
       setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
       return;
+    }
+
+    if (claveAddresses.has(event.params.from.toLowerCase())) {
+      context.Account.set({
+        id: event.params.from.toLowerCase(),
+        address: event.params.from.toLowerCase(),
+      });
+    }
+
+    if (claveAddresses.has(event.params.to.toLowerCase())) {
+      context.Account.set({
+        id: event.params.to.toLowerCase(),
+        address: event.params.to.toLowerCase(),
+      });
     }
 
     const senderAccountBalance = await context.AaveEarnBalance.get(

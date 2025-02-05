@@ -64,6 +64,20 @@ SyncswapPool.Transfer.handlerWithLoader({
         }
       }
 
+      if (claveAddresses.has(event.params.from.toLowerCase())) {
+        context.Account.set({
+          id: event.params.from.toLowerCase(),
+          address: event.params.from.toLowerCase(),
+        });
+      }
+
+      if (claveAddresses.has(event.params.to.toLowerCase())) {
+        context.Account.set({
+          id: event.params.to.toLowerCase(),
+          address: event.params.to.toLowerCase(),
+        });
+      }
+
       const fromAddress = event.params.from.toLowerCase();
       const toAddress = event.params.to.toLowerCase();
       const poolAddress = event.srcAddress.toLowerCase();
