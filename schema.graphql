@@ -56,11 +56,12 @@ type PoolRegistry {
 
 #! Venus Protocol
 
-type VenusEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
+type VenusEarnBalance @index(fields: ["userAddress", "shareBalance", "tokenAmount"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
   venusPool: VenusPool @index
+  tokenAmount: BigInt! @index
 }
 
 type HistoricalVenusEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
@@ -68,6 +69,7 @@ type HistoricalVenusEarnBalance4Hours @index(fields: ["userAddress", "timestamp"
   userAddress: String! @index
   shareBalance: BigInt!
   venusPool: VenusPool @index
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 
@@ -76,6 +78,7 @@ type HistoricalVenusEarnBalance1Day @index(fields: ["userAddress", "timestamp"])
   userAddress: String! @index
   shareBalance: BigInt!
   venusPool: VenusPool @index
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 
@@ -84,6 +87,7 @@ type HistoricalVenusEarnBalance7Days @index(fields: ["userAddress", "timestamp"]
   userAddress: String! @index
   shareBalance: BigInt!
   venusPool: VenusPool @index
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 
@@ -92,6 +96,7 @@ type HistoricalVenusEarnBalance1Month @index(fields: ["userAddress", "timestamp"
   userAddress: String! @index
   shareBalance: BigInt!
   venusPool: VenusPool @index
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 
@@ -171,11 +176,12 @@ type SyncswapPool {
 
 #! Aave Protocol
 
-type AaveEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
+type AaveEarnBalance @index(fields: ["userAddress", "shareBalance", "tokenAmount"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
   userIndex: BigInt!
+  tokenAmount: BigInt! @index
   aavePool: AavePool @index
 }
 
@@ -185,6 +191,7 @@ type HistoricalAaveEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]
   shareBalance: BigInt!
   aavePool: AavePool @index
   userIndex: BigInt!
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 
@@ -194,6 +201,7 @@ type HistoricalAaveEarnBalance1Day @index(fields: ["userAddress", "timestamp"]) 
   shareBalance: BigInt!
   aavePool: AavePool @index
   userIndex: BigInt!
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 
@@ -203,6 +211,7 @@ type HistoricalAaveEarnBalance7Days @index(fields: ["userAddress", "timestamp"])
   shareBalance: BigInt!
   aavePool: AavePool @index
   userIndex: BigInt!
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 
@@ -212,6 +221,7 @@ type HistoricalAaveEarnBalance1Month @index(fields: ["userAddress", "timestamp"]
   shareBalance: BigInt!
   aavePool: AavePool @index
   userIndex: BigInt!
+  tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
 

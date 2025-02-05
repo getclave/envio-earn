@@ -20,7 +20,7 @@ import { ClaggMainAddress } from "./constants/ClaggAddresses";
 import { SyncswapPoolABI } from "./abi/SyncswapPool";
 import { client } from "./viem/Client";
 import { syncswapCache } from "./utils/SyncswapCache";
-import { shareToAmountSyncswap } from "./utils/shareToAmount";
+import { shareToAmountSyncswap } from "./shareToAmount";
 
 /**
  * Handles new pool creation events from the Syncswap Factory

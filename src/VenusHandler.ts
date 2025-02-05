@@ -13,6 +13,7 @@ import { client } from "./viem/Client";
 import { roundTimestamp } from "./utils/helpers";
 import { walletCache } from "./utils/WalletCache";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
+import { shareToAmountVenus } from "./shareToAmount";
 
 Venus.Transfer.handlerWithLoader({
   loader: async ({ event }) => {
@@ -58,7 +59,7 @@ Venus.Transfer.handlerWithLoader({
 
     const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
 
-    await setNewExchangeRate(
+    const newExchangeRate = await setNewExchangeRate(
       event.srcAddress.toLowerCase() as Address,
       context,
       event.block.timestamp,
@@ -102,11 +103,16 @@ Venus.Transfer.handlerWithLoader({
         shareBalance: senderAccountBalance == undefined ? 0n : senderAccountBalance.shareBalance,
         userAddress: event.params.from.toLowerCase(),
         venusPool_id: pool.id,
+        tokenAmount: senderAccountBalance == undefined ? 0n : senderAccountBalance.tokenAmount,
       };
 
       const updatedAccountObject: VenusEarnBalance = {
         ...prevAccountObject,
         shareBalance: prevAccountObject.shareBalance - event.params.value,
+        tokenAmount: await shareToAmountVenus(
+          prevAccountObject.shareBalance - event.params.value,
+          newExchangeRate
+        ),
       };
 
       context.VenusEarnBalance.set(updatedAccountObject);
@@ -121,11 +127,16 @@ Venus.Transfer.handlerWithLoader({
           receiverAccountBalance == undefined ? 0n : receiverAccountBalance.shareBalance,
         userAddress: event.params.to.toLowerCase(),
         venusPool_id: pool.id,
+        tokenAmount: receiverAccountBalance == undefined ? 0n : receiverAccountBalance.tokenAmount,
       };
 
       const updatedAccountObject: VenusEarnBalance = {
         ...prevAccountObject,
         shareBalance: prevAccountObject.shareBalance + event.params.value,
+        tokenAmount: await shareToAmountVenus(
+          prevAccountObject.shareBalance + event.params.value,
+          newExchangeRate
+        ),
       };
 
       context.VenusEarnBalance.set(updatedAccountObject);
@@ -207,6 +218,8 @@ async function setNewExchangeRate(
   };
 
   context.VenusPool.set(adjustedPool);
+
+  return exchangeRate.result as bigint;
 }
 
 function setHistoricalVenusEarnBalance(
