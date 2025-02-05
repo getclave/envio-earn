@@ -104,36 +104,6 @@ type VenusPool {
   exchangeRate: BigInt!
 }
 
-type HistoricalVenusPoolDaily @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  exchangeRate: BigInt!
-}
-
-type HistoricalVenusPoolWeekly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  exchangeRate: BigInt!
-}
-
-type HistoricalVenusPoolMonthly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  exchangeRate: BigInt!
-}
-
 #! Syncswap Protocol
 
 type SyncswapEarnBalance
@@ -254,36 +224,6 @@ type AavePool {
   lastIndex: BigInt!
 }
 
-type HistoricalAavePoolDaily @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  lastIndex: BigInt!
-}
-
-type HistoricalAavePoolWeekly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  lastIndex: BigInt!
-}
-
-type HistoricalAavePoolMonthly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  lastIndex: BigInt!
-}
-
 #! Clagg Protocol
 
 type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
@@ -341,28 +281,4 @@ type ClaggPool {
   totalShares: BigInt!
   totalSupply: BigInt!
   poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
-}
-
-type HistoricalClaggPoolDaily @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  totalShares: BigInt!
-  totalSupply: BigInt!
-}
-
-type HistoricalClaggPoolWeekly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  totalShares: BigInt!
-  totalSupply: BigInt!
-}
-
-type HistoricalClaggPoolMonthly @index(fields: ["address", "timestamp"]) {
-  id: ID! # Pool address + timestamp
-  address: String! @index
-  timestamp: BigInt! @index
-  totalShares: BigInt!
-  totalSupply: BigInt!
 }

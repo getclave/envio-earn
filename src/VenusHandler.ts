@@ -5,7 +5,7 @@
  */
 
 import { Address, Client, getContract } from "viem";
-import { getOrCreateClaggPool, setHistoricalClaggPool } from "./ClaggHandler";
+import { getOrCreateClaggPool } from "./ClaggHandler";
 import { Venus } from "generated";
 import { handlerContext, Venus_Transfer_event, VenusEarnBalance, VenusPool } from "generated";
 import { VenusPoolABI } from "./abi/VenusPool";
@@ -74,7 +74,6 @@ Venus.Transfer.handlerWithLoader({
       };
 
       context.ClaggPool.set(adjustedPool);
-      setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
       return;
     }
 
@@ -86,7 +85,6 @@ Venus.Transfer.handlerWithLoader({
       };
 
       context.ClaggPool.set(adjustedPool);
-      setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
       return;
     }
 
@@ -209,24 +207,6 @@ async function setNewExchangeRate(
   };
 
   context.VenusPool.set(adjustedPool);
-
-  context.HistoricalVenusPoolDaily.set({
-    ...adjustedPool,
-    id: adjustedPool.id + roundTimestamp(timestamp),
-    timestamp: BigInt(roundTimestamp(timestamp)),
-  });
-
-  context.HistoricalVenusPoolWeekly.set({
-    ...adjustedPool,
-    id: adjustedPool.id + roundTimestamp(timestamp, 86400 * 7),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
-  });
-
-  context.HistoricalVenusPoolMonthly.set({
-    ...adjustedPool,
-    id: adjustedPool.id + roundTimestamp(timestamp, 86400 * 30),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
-  });
 }
 
 function setHistoricalVenusEarnBalance(

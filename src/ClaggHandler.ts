@@ -34,7 +34,6 @@ ClaggMain.Deposit.handlerWithLoader({
     };
     // Update pool total shares
     context.ClaggPool.set(adjustedPool);
-    setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
 
     const previousUserBalance: ClaggEarnBalance_t = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
@@ -87,7 +86,6 @@ ClaggMain.Withdraw.handlerWithLoader({
     };
     // Update pool total shares
     context.ClaggPool.set(adjustedPool);
-    setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
 
     const previousUserBalance: ClaggEarnBalance_t = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
@@ -158,28 +156,6 @@ function setHistoricalClaggEarnBalance(
   context.HistoricalClaggEarnBalance1Month.set({
     ...accountObject,
     id: accountObject.id + roundTimestamp(timestamp, 86400 * 30),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
-  });
-}
-
-export function setHistoricalClaggPool(
-  poolObject: ClaggPool_t,
-  context: handlerContext,
-  timestamp: number
-) {
-  context.HistoricalClaggPoolDaily.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp),
-    timestamp: BigInt(roundTimestamp(timestamp)),
-  });
-  context.HistoricalClaggPoolWeekly.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp, 86400 * 7),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
-  });
-  context.HistoricalClaggPoolMonthly.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp, 86400 * 30),
     timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
   });
 }

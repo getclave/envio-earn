@@ -1,6 +1,6 @@
 import { Address, Client, getContract } from "viem";
 import { AaveEarnBalance, AavePool, handlerContext, Aave, Aave_Transfer_event } from "generated";
-import { getOrCreateClaggPool, setHistoricalClaggPool } from "./ClaggHandler";
+import { getOrCreateClaggPool } from "./ClaggHandler";
 import { walletCache } from "./utils/WalletCache";
 import { roundTimestamp } from "./utils/helpers";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
@@ -38,8 +38,6 @@ Aave.Mint.handlerWithLoader({
 
     context.AavePool.set(adjustedPool);
 
-    setHistoricalAavePool(adjustedPool, context, event.block.timestamp);
-
     const previousAaveEarnBalance: AaveEarnBalance = {
       id: event.params.onBehalfOf.toLowerCase() + createdPool.id,
       userAddress: event.params.onBehalfOf.toLowerCase(),
@@ -51,6 +49,7 @@ Aave.Mint.handlerWithLoader({
     const aaveEarnBalance: AaveEarnBalance = {
       ...previousAaveEarnBalance,
       userIndex: event.params.index,
+      shareBalance: previousAaveEarnBalance.shareBalance + BigInt(event.params.value),
     };
 
     context.AaveEarnBalance.set(aaveEarnBalance);
@@ -86,8 +85,6 @@ Aave.Burn.handlerWithLoader({
 
     context.AavePool.set(adjustedPool);
 
-    setHistoricalAavePool(adjustedPool, context, event.block.timestamp);
-
     const previousAaveEarnBalance: AaveEarnBalance = {
       id: event.params.from.toLowerCase() + createdPool.id,
       userAddress: event.params.from.toLowerCase(),
@@ -99,8 +96,8 @@ Aave.Burn.handlerWithLoader({
     const aaveEarnBalance: AaveEarnBalance = {
       ...previousAaveEarnBalance,
       userIndex: event.params.index,
+      shareBalance: previousAaveEarnBalance.shareBalance - BigInt(event.params.value),
     };
-
     context.AaveEarnBalance.set(aaveEarnBalance);
     setHistoricalAaveEarnBalance(previousAaveEarnBalance, context, event.block.timestamp);
   },
@@ -141,7 +138,6 @@ Aave.Transfer.handlerWithLoader({
         totalSupply: pool.totalSupply - event.params.value,
       };
       context.ClaggPool.set(adjustedPool);
-      setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
       return;
     }
 
@@ -152,7 +148,6 @@ Aave.Transfer.handlerWithLoader({
         totalSupply: pool.totalSupply + event.params.value,
       };
       context.ClaggPool.set(adjustedPool);
-      setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
       return;
     }
 
@@ -290,24 +285,6 @@ function isClaggTransfer(event: Aave_Transfer_event) {
     event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase() ||
     event.params.to.toLowerCase() == ClaggMainAddress.toLowerCase()
   );
-}
-
-function setHistoricalAavePool(poolObject: AavePool_t, context: handlerContext, timestamp: number) {
-  context.HistoricalAavePoolDaily.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp),
-    timestamp: BigInt(roundTimestamp(timestamp)),
-  });
-  context.HistoricalAavePoolWeekly.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp, 86400 * 7),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
-  });
-  context.HistoricalAavePoolMonthly.set({
-    ...poolObject,
-    id: poolObject.id + roundTimestamp(timestamp, 86400 * 30),
-    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
-  });
 }
 
 function setHistoricalAaveEarnBalance(

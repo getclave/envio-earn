@@ -5,7 +5,7 @@
  */
 
 import { Address, Client, getContract } from "viem";
-import { getOrCreateClaggPool, setHistoricalClaggPool } from "./ClaggHandler";
+import { getOrCreateClaggPool } from "./ClaggHandler";
 import {
   handlerContext,
   SyncswapEarnBalance,
@@ -102,7 +102,6 @@ SyncswapPool.Transfer.handlerWithLoader({
         };
 
         context.ClaggPool.set(adjustedPool);
-        setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
         return;
       }
 
@@ -115,7 +114,6 @@ SyncswapPool.Transfer.handlerWithLoader({
         };
 
         context.ClaggPool.set(adjustedPool);
-        setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
         return;
       }
 
