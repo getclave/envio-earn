@@ -19,10 +19,7 @@ networks:
       - name: SyncswapPool
         handler: src/SyncswapHandler.ts
         events:
-          - event: "Sync(uint reserve0, uint reserve1)"
           - event: "Transfer(address indexed from, address indexed to, uint256 value)"
-          - event: "Mint(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
-          - event: "Burn(address indexed sender, uint amount0, uint amount1, uint liquidity, address indexed to)"
       - name: Aave
         handler: src/AaveHandler.ts
         address:
@@ -45,11 +42,6 @@ networks:
           - 0x1fa916c27c7c2c4602124a14c77dbb40a5ff1be8
           - 0x697a70779c1a03ba2bd28b7627a902bff831b616
         events:
-          - event: "Borrow(address indexed borrower, uint256 borrowAmount, uint256 accountBorrows, uint256 totalBorrows)"
-          - event: "RepayBorrow(address indexed payer, address indexed borrower, uint256 repayAmount, uint256 accountBorrows, uint256 totalBorrows)"
-          - event: "AccrueInterest(uint256 cashPrior, uint256 interestAccumulated, uint256 borrowIndex, uint256 totalBorrows)"
-          - event: "BadDebtIncreased(address indexed borrower, uint256 badDebtDelta, uint256 badDebtOld, uint256 badDebtNew)"
-          - event: "BadDebtRecovered(uint256 badDebtOld, uint256 badDebtNew)"
           - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: ClaggMain
         handler: src/ClaggHandler.ts

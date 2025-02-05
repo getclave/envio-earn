@@ -3,6 +3,7 @@ import { TestHelpers } from "generated";
 import { VenusPoolAddresses } from "../src/constants/VenusPools";
 import { ClaggMainAddress } from "../src/constants/ClaggAddresses";
 import { AavePoolAddresses } from "../src/constants/AavePools";
+import { roundTimestamp } from "../src/utils/helpers";
 
 const { MockDb, Addresses, Venus, SyncswapFactory, SyncswapPool, ClaggMain, Aave } = TestHelpers;
 
@@ -17,23 +18,27 @@ describe("Protocol Handlers", () => {
   const token1 = "0x65006841486feb84570d909703ad646ddeaf0f5B";
   const userAddress1 = Addresses.mockAddresses[0];
   const userAddress2 = Addresses.mockAddresses[1];
+  const baseTimestamp = 86400; // One day in seconds
   let mockDb: ReturnType<typeof MockDb.createMockDb>;
+
+  // Fix syncswapPoolAddress reference
+  const syncswapPoolAddress = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
 
   beforeEach(() => {
     mockDb = MockDb.createMockDb();
   });
 
   describe("Syncswap", () => {
-    const poolAddress = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
+    const poolAddress = syncswapPoolAddress;
 
     beforeEach(async () => {
-      // Initialize Syncswap pool
+      // Initialize Syncswap pool with non-zero values
       mockDb.entities.SyncswapPool.set({
         id: poolAddress.toLowerCase(),
         address: poolAddress,
-        reserve0: 0n,
-        reserve1: 0n,
-        totalSupply: 0n,
+        reserve0: 1000n,
+        reserve1: 2000n,
+        totalSupply: 1000n,
         name: "Syncswap Pool",
         symbol: "SYNC-LP",
         underlyingToken: token0,
@@ -42,99 +47,205 @@ describe("Protocol Handlers", () => {
         token0PrecisionMultiplier: 1n,
         token1PrecisionMultiplier: 1n,
       });
-    });
 
-    it("should create new pool and handle pool events", async () => {
-      // Create pool
-      const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
-        mockEventData: {
-          srcAddress: "0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb",
-          block: {
-            timestamp: 1000,
-          },
-        },
-        pool: poolAddress,
-        token0,
-        token1,
+      const dailyTimestamp = Math.floor(baseTimestamp / 86400) * 86400;
+      const weeklyTimestamp = Math.floor(baseTimestamp / (86400 * 7)) * (86400 * 7);
+      const monthlyTimestamp = Math.floor(baseTimestamp / (86400 * 30)) * (86400 * 30);
+      const fourHourTimestamp = Math.floor(baseTimestamp / (3600 * 4)) * (3600 * 4);
+
+      // Initialize historical records with these timestamps
+      mockDb.entities.HistoricalSyncswapPoolDaily.set({
+        id: poolAddress.toLowerCase() + dailyTimestamp.toString(),
+        address: poolAddress.toLowerCase(),
+        totalSupply: 1000n,
+        timestamp: BigInt(dailyTimestamp),
+        reserve0: 1000n,
+        reserve1: 2000n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
       });
 
-      const mockDbAfterPool = await SyncswapFactory.PoolCreated.processEvent({
-        event: mockPool,
-        mockDb,
+      mockDb.entities.HistoricalSyncswapPoolWeekly.set({
+        id: poolAddress.toLowerCase() + weeklyTimestamp.toString(),
+        address: poolAddress.toLowerCase(),
+        totalSupply: 1000n,
+        timestamp: BigInt(weeklyTimestamp),
+        reserve0: 1000n,
+        reserve1: 2000n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
       });
 
-      const pool = mockDbAfterPool.entities.SyncswapPool.get(poolAddress.toLowerCase());
-      assert.equal(pool?.id, poolAddress.toLowerCase(), "Pool should be created");
-      assert.equal(pool?.underlyingToken, token0.toLowerCase(), "Token 0 should be set");
-      assert.equal(pool?.underlyingToken2, token1.toLowerCase(), "Token 1 should be set");
-      assert.equal(pool?.totalSupply, 0n, "Initial total supply should be 0");
-
-      // Test Mint event
-      const mockMint = SyncswapPool.Mint.createMockEvent({
-        mockEventData: {
-          srcAddress: poolAddress,
-          block: {
-            timestamp: 1100,
-          },
-        },
-        liquidity: 100n,
+      mockDb.entities.HistoricalSyncswapPoolMonthly.set({
+        id: poolAddress.toLowerCase() + monthlyTimestamp.toString(),
+        address: poolAddress.toLowerCase(),
+        totalSupply: 1000n,
+        timestamp: BigInt(monthlyTimestamp),
+        reserve0: 1000n,
+        reserve1: 2000n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
       });
 
-      const mockDbAfterMint = await SyncswapPool.Mint.processEvent({
-        event: mockMint,
-        mockDb: mockDbAfterPool,
+      // Initialize historical balance records
+      mockDb.entities.HistoricalSyncswapEarnBalance4Hours.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + fourHourTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(fourHourTimestamp),
       });
 
-      const poolAfterMint = mockDbAfterMint.entities.SyncswapPool.get(poolAddress.toLowerCase());
-      assert.equal(poolAfterMint?.totalSupply, 100n, "Total supply should be updated after mint");
-
-      // Test Sync event
-      const mockSync = SyncswapPool.Sync.createMockEvent({
-        mockEventData: {
-          srcAddress: poolAddress,
-          block: {
-            timestamp: 1200,
-          },
-        },
-        reserve0: 100n,
-        reserve1: 100n,
+      mockDb.entities.HistoricalSyncswapEarnBalance1Day.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + dailyTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(dailyTimestamp),
       });
 
-      const mockDbAfterSync = await SyncswapPool.Sync.processEvent({
-        event: mockSync,
-        mockDb: mockDbAfterMint,
+      mockDb.entities.HistoricalSyncswapEarnBalance7Days.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + weeklyTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(weeklyTimestamp),
       });
 
-      const poolAfterSync = mockDbAfterSync.entities.SyncswapPool.get(poolAddress.toLowerCase());
-      assert.equal(poolAfterSync?.reserve0, 100n, "Reserve0 should be updated");
-      assert.equal(poolAfterSync?.reserve1, 100n, "Reserve1 should be updated");
-
-      // Test Burn event
-      const mockBurn = SyncswapPool.Burn.createMockEvent({
-        mockEventData: {
-          srcAddress: poolAddress,
-          block: {
-            timestamp: 1300,
-          },
-        },
-        liquidity: 50n,
+      mockDb.entities.HistoricalSyncswapEarnBalance1Month.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + monthlyTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(monthlyTimestamp),
       });
 
-      const mockDbAfterBurn = await SyncswapPool.Burn.processEvent({
-        event: mockBurn,
-        mockDb: mockDbAfterSync,
+      // Initialize sender balance
+      mockDb.entities.SyncswapEarnBalance.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
       });
-
-      const poolAfterBurn = mockDbAfterBurn.entities.SyncswapPool.get(poolAddress.toLowerCase());
-      assert.equal(poolAfterBurn?.totalSupply, 50n, "Total supply should be reduced after burn");
     });
 
     it("should handle user transfers and balances", async () => {
+      const baseTimestamp = 86400; // One day in seconds
+      const dailyTimestamp = Math.floor(baseTimestamp / 86400) * 86400;
+      const weeklyTimestamp = Math.floor(baseTimestamp / (86400 * 7)) * (86400 * 7);
+      const monthlyTimestamp = Math.floor(baseTimestamp / (86400 * 30)) * (86400 * 30);
+      const fourHourTimestamp = Math.floor(baseTimestamp / (3600 * 4)) * (3600 * 4);
+
+      // Initialize historical records with these timestamps
+      mockDb.entities.HistoricalSyncswapPoolDaily.set({
+        id: poolAddress.toLowerCase() + dailyTimestamp.toString(),
+        address: poolAddress.toLowerCase(),
+        totalSupply: 1000n,
+        timestamp: BigInt(dailyTimestamp),
+        reserve0: 1000n,
+        reserve1: 2000n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
+      });
+
+      mockDb.entities.HistoricalSyncswapPoolWeekly.set({
+        id: poolAddress.toLowerCase() + weeklyTimestamp.toString(),
+        address: poolAddress.toLowerCase(),
+        totalSupply: 1000n,
+        timestamp: BigInt(weeklyTimestamp),
+        reserve0: 1000n,
+        reserve1: 2000n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
+      });
+
+      mockDb.entities.HistoricalSyncswapPoolMonthly.set({
+        id: poolAddress.toLowerCase() + monthlyTimestamp.toString(),
+        address: poolAddress.toLowerCase(),
+        totalSupply: 1000n,
+        timestamp: BigInt(monthlyTimestamp),
+        reserve0: 1000n,
+        reserve1: 2000n,
+        name: "Syncswap Pool",
+        symbol: "SYNC-LP",
+        underlyingToken: token0,
+        underlyingToken2: token1,
+        poolType: 1n,
+        token0PrecisionMultiplier: 1n,
+        token1PrecisionMultiplier: 1n,
+      });
+
+      // Initialize historical balance records
+      mockDb.entities.HistoricalSyncswapEarnBalance4Hours.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + fourHourTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(fourHourTimestamp),
+      });
+
+      mockDb.entities.HistoricalSyncswapEarnBalance1Day.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + dailyTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(dailyTimestamp),
+      });
+
+      mockDb.entities.HistoricalSyncswapEarnBalance7Days.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + weeklyTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(weeklyTimestamp),
+      });
+
+      mockDb.entities.HistoricalSyncswapEarnBalance1Month.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase() + monthlyTimestamp.toString(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+        timestamp: BigInt(monthlyTimestamp),
+      });
+
+      // Initialize sender balance
+      mockDb.entities.SyncswapEarnBalance.set({
+        id: userAddress1.toLowerCase() + poolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: poolAddress.toLowerCase(),
+        shareBalance: 100n,
+      });
+
       const mockTransfer = SyncswapPool.Transfer.createMockEvent({
         mockEventData: {
           srcAddress: poolAddress,
           block: {
-            timestamp: 1400,
+            timestamp: baseTimestamp,
           },
         },
         from: userAddress1,
@@ -147,6 +258,7 @@ describe("Protocol Handlers", () => {
         mockDb,
       });
 
+      // Check user balances
       const senderBalance = mockDbAfterTransfer.entities.SyncswapEarnBalance.get(
         userAddress1.toLowerCase() + poolAddress.toLowerCase()
       );
@@ -156,6 +268,55 @@ describe("Protocol Handlers", () => {
         userAddress2.toLowerCase() + poolAddress.toLowerCase()
       );
       assert.equal(receiverBalance?.shareBalance, 100n, "Receiver balance should be increased");
+
+      // Check historical records
+      const historicalBalance4h =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance4Hours.get(
+          userAddress1.toLowerCase() +
+            poolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp).toString()
+        );
+      assert.equal(
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 after transfer"
+      );
+
+      const historicalBalance1d =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Day.get(
+          userAddress1.toLowerCase() +
+            poolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp, 86400).toString()
+        );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 after transfer"
+      );
+
+      const historicalBalance7d =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance7Days.get(
+          userAddress1.toLowerCase() +
+            poolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp, 86400 * 7).toString()
+        );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 after transfer"
+      );
+
+      const historicalBalance1m =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Month.get(
+          userAddress1.toLowerCase() +
+            poolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp, 86400 * 30).toString()
+        );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 after transfer"
+      );
     });
 
     it("should handle Clagg integration", async () => {
@@ -226,32 +387,27 @@ describe("Protocol Handlers", () => {
         name: "Venus Pool",
         symbol: "vTOKEN",
         underlyingToken: token0,
-        exchangeRate: 0n,
+        exchangeRate: 1000000n,
       });
     });
 
-    it("should handle minting and user balances", async () => {
-      const mockMint = Venus.AccrueInterest.createMockEvent({
-        mockEventData: {
-          srcAddress: venusPoolAddress,
-          block: {
-            number: 1000,
-          },
-        },
+    it("should handle user balances and historical records", async () => {
+      const baseTimestamp = 86400; // One day in seconds
+
+      // Initialize sender balance before transfer
+      mockDb.entities.VenusEarnBalance.set({
+        id: userAddress1.toLowerCase() + venusPoolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        venusPool_id: venusPoolAddress.toLowerCase(),
+        shareBalance: 100n,
       });
 
-      const mockDbAfterMint = await Venus.AccrueInterest.processEvent({
-        event: mockMint,
-        mockDb,
-      });
-
-      const pool = mockDbAfterMint.entities.VenusPool.get(venusPoolAddress);
-      assert.notEqual(pool?.exchangeRate, 0n, "Exchange rate should be set");
-
-      // Test user transfer
       const mockTransfer = Venus.Transfer.createMockEvent({
         mockEventData: {
           srcAddress: venusPoolAddress,
+          block: {
+            timestamp: baseTimestamp,
+          },
         },
         from: userAddress1,
         to: userAddress2,
@@ -260,9 +416,10 @@ describe("Protocol Handlers", () => {
 
       const mockDbAfterTransfer = await Venus.Transfer.processEvent({
         event: mockTransfer,
-        mockDb: mockDbAfterMint,
+        mockDb,
       });
 
+      // Check user balances
       const senderBalance = mockDbAfterTransfer.entities.VenusEarnBalance.get(
         userAddress1.toLowerCase() + venusPoolAddress.toLowerCase()
       );
@@ -272,6 +429,75 @@ describe("Protocol Handlers", () => {
         userAddress2.toLowerCase() + venusPoolAddress.toLowerCase()
       );
       assert.equal(receiverBalance?.shareBalance, 100n, "Receiver balance should be increased");
+
+      // Check historical pool records
+      const dailyTimestamp = Math.floor(baseTimestamp / 86400) * 86400;
+      const historicalVenusDaily = mockDbAfterTransfer.entities.HistoricalVenusPoolDaily.get(
+        venusPoolAddress.toLowerCase() + dailyTimestamp.toString()
+      );
+      assert.equal(
+        historicalVenusDaily?.exchangeRate,
+        1000000n,
+        "Historical daily exchange rate should be recorded"
+      );
+
+      const weeklyTimestamp = Math.floor(baseTimestamp / (86400 * 7)) * (86400 * 7);
+      const historicalVenusWeekly = mockDbAfterTransfer.entities.HistoricalVenusPoolWeekly.get(
+        venusPoolAddress.toLowerCase() + weeklyTimestamp.toString()
+      );
+      assert.equal(
+        historicalVenusWeekly?.exchangeRate,
+        1000000n,
+        "Historical weekly exchange rate should be recorded"
+      );
+
+      const monthlyTimestamp = Math.floor(baseTimestamp / (86400 * 30)) * (86400 * 30);
+      const historicalVenusMonthly = mockDbAfterTransfer.entities.HistoricalVenusPoolMonthly.get(
+        venusPoolAddress.toLowerCase() + monthlyTimestamp.toString()
+      );
+      assert.equal(
+        historicalVenusMonthly?.exchangeRate,
+        1000000n,
+        "Historical monthly exchange rate should be recorded"
+      );
+
+      // Check historical balance records
+      const fourHourTimestamp = Math.floor(baseTimestamp / (3600 * 4)) * (3600 * 4);
+      const historicalBalance4h = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance4Hours.get(
+        userAddress1.toLowerCase() + venusPoolAddress.toLowerCase() + fourHourTimestamp.toString()
+      );
+      assert.equal(
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 after transfer"
+      );
+
+      const historicalBalance1d = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance1Day.get(
+        userAddress1.toLowerCase() + venusPoolAddress.toLowerCase() + dailyTimestamp.toString()
+      );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 after transfer"
+      );
+
+      const historicalBalance7d = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance7Days.get(
+        userAddress1.toLowerCase() + venusPoolAddress.toLowerCase() + weeklyTimestamp.toString()
+      );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 after transfer"
+      );
+
+      const historicalBalance1m = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance1Month.get(
+        userAddress1.toLowerCase() + venusPoolAddress.toLowerCase() + monthlyTimestamp.toString()
+      );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 after transfer"
+      );
     });
 
     it("should handle Clagg integration", async () => {
@@ -572,16 +798,19 @@ describe("Protocol Handlers", () => {
     const syncswapPoolAddress = "0x0259d9dfb638775858b1d072222237e2ce7111C0";
     const venusPoolAddress = VenusPoolAddresses[0];
     const aavePoolAddress = AavePoolAddresses[0];
-    const timestamp = 86400; // Use a timestamp that's already rounded to a day
+    const dailyTimestamp = Math.floor(baseTimestamp / 86400) * 86400;
+    const weeklyTimestamp = Math.floor(baseTimestamp / (86400 * 7)) * (86400 * 7);
+    const monthlyTimestamp = Math.floor(baseTimestamp / (86400 * 30)) * (86400 * 30);
+    const fourHourTimestamp = Math.floor(baseTimestamp / (3600 * 4)) * (3600 * 4);
 
     beforeEach(async () => {
-      // Initialize Syncswap pool
+      // Initialize pools with consistent initial values
       mockDb.entities.SyncswapPool.set({
         id: syncswapPoolAddress.toLowerCase(),
         address: syncswapPoolAddress,
-        reserve0: 0n,
-        reserve1: 0n,
-        totalSupply: 0n,
+        reserve0: 1000n,
+        reserve1: 2000n,
+        totalSupply: 1000n,
         name: "Syncswap Pool",
         symbol: "SYNC-LP",
         underlyingToken: token0,
@@ -591,7 +820,6 @@ describe("Protocol Handlers", () => {
         token1PrecisionMultiplier: 1n,
       });
 
-      // Initialize Venus pool
       mockDb.entities.VenusPool.set({
         id: venusPoolAddress.toLowerCase(),
         address: venusPoolAddress,
@@ -601,7 +829,6 @@ describe("Protocol Handlers", () => {
         exchangeRate: 1000000n,
       });
 
-      // Initialize Aave pool
       mockDb.entities.AavePool.set({
         id: aavePoolAddress.toLowerCase(),
         address: aavePoolAddress,
@@ -610,93 +837,160 @@ describe("Protocol Handlers", () => {
         underlyingToken: token0,
         lastIndex: 2000000n,
       });
-
-      // Initialize Clagg pool
-      mockDb.entities.ClaggPool.set({
-        id: syncswapPoolAddress.toLowerCase(),
-        address: syncswapPoolAddress,
-        totalShares: 0n,
-        totalSupply: 0n,
-      });
     });
 
     it("should create historical entities for Syncswap events", async () => {
-      // First create the pool
-      const mockPool = SyncswapFactory.PoolCreated.createMockEvent({
-        mockEventData: {
-          srcAddress: "0xf2DAd89f2788a8CD54625C60b55cD3d2D0ACa7Cb",
-          block: {
-            timestamp,
-          },
-        },
-        pool: syncswapPoolAddress,
-        token0,
-        token1,
+      // Initialize sender balance
+      mockDb.entities.SyncswapEarnBalance.set({
+        id: userAddress1.toLowerCase() + syncswapPoolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        syncswapPool_id: syncswapPoolAddress.toLowerCase(),
+        shareBalance: 100n,
       });
 
-      const mockDbAfterPool = await SyncswapFactory.PoolCreated.processEvent({
-        event: mockPool,
-        mockDb,
-      });
-
-      // Then test Sync historical entity
-      const mockSync = SyncswapPool.Sync.createMockEvent({
+      const mockTransfer = SyncswapPool.Transfer.createMockEvent({
         mockEventData: {
           srcAddress: syncswapPoolAddress,
           block: {
-            timestamp,
+            timestamp: baseTimestamp,
           },
         },
-        reserve0: 1000n,
-        reserve1: 2000n,
+        from: userAddress1,
+        to: userAddress2,
+        value: 100n,
       });
 
-      const mockDbAfterSync = await SyncswapPool.Sync.processEvent({
-        event: mockSync,
-        mockDb: mockDbAfterPool,
+      const mockDbAfterTransfer = await SyncswapPool.Transfer.processEvent({
+        event: mockTransfer,
+        mockDb,
       });
 
-      const historicalSync = mockDbAfterSync.entities.HistoricalSyncswapPool.get(
-        syncswapPoolAddress.toLowerCase() + timestamp.toString()
-      );
-      assert.equal(historicalSync?.reserve0, 1000n, "Historical reserve0 should be recorded");
-      assert.equal(historicalSync?.reserve1, 2000n, "Historical reserve1 should be recorded");
+      // Check historical balance records
+      const historicalBalance4h =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance4Hours.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp).toString()
+        );
       assert.equal(
-        historicalSync?.timestamp,
-        BigInt(timestamp),
-        "Historical timestamp should be recorded"
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 after transfer"
+      );
+
+      const historicalBalance1d =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Day.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp, 86400).toString()
+        );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 after transfer"
+      );
+
+      const historicalBalance7d =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance7Days.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp, 86400 * 7).toString()
+        );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 after transfer"
+      );
+
+      const historicalBalance1m =
+        mockDbAfterTransfer.entities.HistoricalSyncswapEarnBalance1Month.get(
+          userAddress1.toLowerCase() +
+            syncswapPoolAddress.toLowerCase() +
+            roundTimestamp(baseTimestamp, 86400 * 30).toString()
+        );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 after transfer"
       );
     });
 
     it("should create historical entities for Venus events", async () => {
-      // Test AccrueInterest historical entity
-      const mockAccrue = Venus.AccrueInterest.createMockEvent({
+      const baseTimestamp = 86400; // One day in seconds
+
+      // Initialize user balance before transfer
+      mockDb.entities.VenusEarnBalance.set({
+        id: userAddress1.toLowerCase() + venusPoolAddress.toLowerCase(),
+        userAddress: userAddress1.toLowerCase(),
+        venusPool_id: venusPoolAddress.toLowerCase(),
+        shareBalance: 100n,
+      });
+
+      // Test Transfer event for historical tracking
+      const mockTransfer = Venus.Transfer.createMockEvent({
         mockEventData: {
           srcAddress: venusPoolAddress,
           block: {
-            number: 1000,
-            timestamp,
+            timestamp: baseTimestamp,
           },
         },
+        from: userAddress1,
+        to: userAddress2,
+        value: 100n,
       });
 
-      const mockDbAfterAccrue = await Venus.AccrueInterest.processEvent({
-        event: mockAccrue,
+      const mockDbAfterTransfer = await Venus.Transfer.processEvent({
+        event: mockTransfer,
         mockDb,
       });
 
-      const historicalVenus = mockDbAfterAccrue.entities.HistoricalVenusPool.get(
-        venusPoolAddress.toLowerCase() + timestamp.toString()
-      );
-      assert.notEqual(
-        historicalVenus?.exchangeRate,
-        0n,
-        "Historical exchange rate should be recorded"
+      // Check historical balances
+      // Check 4-hour historical balance
+      const historicalBalance4h = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance4Hours.get(
+        userAddress1.toLowerCase() +
+          venusPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp).toString()
       );
       assert.equal(
-        historicalVenus?.timestamp,
-        BigInt(timestamp),
-        "Historical timestamp should be recorded"
+        historicalBalance4h?.shareBalance,
+        0n,
+        "Historical 4-hour balance should be 0 after transfer"
+      );
+
+      // Check daily historical balance
+      const historicalBalance1d = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance1Day.get(
+        userAddress1.toLowerCase() +
+          venusPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400).toString()
+      );
+      assert.equal(
+        historicalBalance1d?.shareBalance,
+        0n,
+        "Historical daily balance should be 0 after transfer"
+      );
+
+      // Check weekly historical balance
+      const historicalBalance7d = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance7Days.get(
+        userAddress1.toLowerCase() +
+          venusPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 7).toString()
+      );
+      assert.equal(
+        historicalBalance7d?.shareBalance,
+        0n,
+        "Historical weekly balance should be 0 after transfer"
+      );
+
+      // Check monthly historical balance
+      const historicalBalance1m = mockDbAfterTransfer.entities.HistoricalVenusEarnBalance1Month.get(
+        userAddress1.toLowerCase() +
+          venusPoolAddress.toLowerCase() +
+          roundTimestamp(baseTimestamp, 86400 * 30).toString()
+      );
+      assert.equal(
+        historicalBalance1m?.shareBalance,
+        0n,
+        "Historical monthly balance should be 0 after transfer"
       );
     });
 
@@ -706,7 +1000,7 @@ describe("Protocol Handlers", () => {
         mockEventData: {
           srcAddress: aavePoolAddress,
           block: {
-            timestamp,
+            timestamp: baseTimestamp,
           },
         },
         caller: userAddress1,
@@ -722,12 +1016,12 @@ describe("Protocol Handlers", () => {
       });
 
       const historicalAave = mockDbAfterMint.entities.HistoricalAavePool.get(
-        aavePoolAddress.toLowerCase() + timestamp.toString()
+        aavePoolAddress.toLowerCase() + baseTimestamp.toString()
       );
       assert.equal(historicalAave?.lastIndex, 2000000n, "Historical index should be recorded");
       assert.equal(
         historicalAave?.timestamp,
-        BigInt(timestamp),
+        BigInt(baseTimestamp),
         "Historical timestamp should be recorded"
       );
     });
@@ -746,7 +1040,7 @@ describe("Protocol Handlers", () => {
         mockEventData: {
           srcAddress: ClaggMainAddress,
           block: {
-            timestamp,
+            timestamp: baseTimestamp,
           },
         },
         user: userAddress1,
@@ -761,7 +1055,7 @@ describe("Protocol Handlers", () => {
       });
 
       const historicalClagg = mockDbAfterDeposit.entities.HistoricalClaggPool.get(
-        syncswapPoolAddress.toLowerCase() + timestamp.toString()
+        syncswapPoolAddress.toLowerCase() + baseTimestamp.toString()
       );
       assert.equal(
         historicalClagg?.totalShares,
@@ -770,7 +1064,7 @@ describe("Protocol Handlers", () => {
       );
       assert.equal(
         historicalClagg?.timestamp,
-        BigInt(timestamp),
+        BigInt(baseTimestamp),
         "Historical timestamp should be recorded"
       );
     });

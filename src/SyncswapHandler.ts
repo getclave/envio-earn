@@ -5,12 +5,11 @@
  */
 
 import { Address, Client, getContract } from "viem";
-import { getOrCreateClaggPool } from "./ClaggHandler";
+import { getOrCreateClaggPool, setHistoricalClaggPool } from "./ClaggHandler";
 import {
   handlerContext,
   SyncswapEarnBalance,
   SyncswapFactory,
-  SyncswapFactory_PoolCreated_event,
   SyncswapPool,
   SyncswapPool_Transfer_event,
 } from "generated";
@@ -26,7 +25,7 @@ import { client } from "./viem/Client";
  * Creates and stores pool data including token pairs and initial state
  */
 SyncswapFactory.PoolCreated.handler(async ({ event, context }) => {
-  await createPool(event, context);
+  await createOrGetSyncswapPool(event.params.pool.toLowerCase() as Address, context);
 });
 
 /**
@@ -38,75 +37,6 @@ SyncswapFactory.PoolCreated.contractRegister(
   },
   { preRegisterDynamicContracts: true }
 );
-
-/**
- * Updates pool reserves when sync events occur
- * Tracks the current state of liquidity in the pool
- */
-SyncswapPool.Sync.handler(async ({ event, context }) => {
-  const syncPool = (await context.SyncswapPool.get(
-    event.srcAddress.toLowerCase() as Address
-  )) as SyncswapPool_t;
-
-  const adjustedPool = {
-    ...syncPool,
-    reserve0: event.params.reserve0,
-    reserve1: event.params.reserve1,
-  };
-
-  context.SyncswapPool.set(adjustedPool);
-  context.HistoricalSyncswapPool.set({
-    ...adjustedPool,
-    id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-    timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-  });
-});
-
-/**
- * Handles liquidity addition events
- * Updates pool's total supply when new liquidity is added
- */
-SyncswapPool.Mint.handler(async ({ event, context }) => {
-  const syncPool = await getOrCreateSyncswapPool(
-    event.srcAddress.toLowerCase() as Address,
-    context
-  );
-
-  const adjustedPool = {
-    ...syncPool,
-    totalSupply: syncPool.totalSupply + event.params.liquidity,
-  };
-
-  context.SyncswapPool.set(adjustedPool);
-  context.HistoricalSyncswapPool.set({
-    ...adjustedPool,
-    id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-    timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-  });
-});
-
-/**
- * Handles liquidity removal events
- * Updates pool's total supply when liquidity is removed
- */
-SyncswapPool.Burn.handler(async ({ event, context }) => {
-  const syncPool = await getOrCreateSyncswapPool(
-    event.srcAddress.toLowerCase() as Address,
-    context
-  );
-
-  const adjustedPool = {
-    ...syncPool,
-    totalSupply: syncPool.totalSupply - event.params.liquidity,
-  };
-
-  context.SyncswapPool.set(adjustedPool);
-  context.HistoricalSyncswapPool.set({
-    ...adjustedPool,
-    id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-    timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-  });
-});
 
 SyncswapPool.Transfer.handlerWithLoader({
   loader: async ({ event }) => {
@@ -134,6 +64,19 @@ SyncswapPool.Transfer.handlerWithLoader({
         }
       }
 
+      const fromAddress = event.params.from.toLowerCase();
+      const toAddress = event.params.to.toLowerCase();
+      const poolAddress = event.srcAddress.toLowerCase();
+
+      const pool = await createOrGetSyncswapPool(
+        poolAddress as Address,
+        context,
+        BigInt(event.block.number)
+      );
+
+      // Update historical pool records
+      setHistoricalSyncswapPool(pool, context, event.block.timestamp);
+
       if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
         const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
 
@@ -143,11 +86,7 @@ SyncswapPool.Transfer.handlerWithLoader({
         };
 
         context.ClaggPool.set(adjustedPool);
-        context.HistoricalClaggPool.set({
-          ...adjustedPool,
-          id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-          timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-        });
+        setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
         return;
       }
 
@@ -160,63 +99,50 @@ SyncswapPool.Transfer.handlerWithLoader({
         };
 
         context.ClaggPool.set(adjustedPool);
-        context.HistoricalClaggPool.set({
-          ...adjustedPool,
-          id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-          timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-        });
+        setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
         return;
       }
-
-      const fromAddress = event.params.from.toLowerCase();
-      const toAddress = event.params.to.toLowerCase();
-      const poolAddress = event.srcAddress.toLowerCase();
 
       const [senderAccountBalance, receiverAccountBalance] = await Promise.all([
         context.SyncswapEarnBalance.get(fromAddress + poolAddress),
         context.SyncswapEarnBalance.get(toAddress + poolAddress),
       ]);
 
-      await getOrCreateSyncswapPool(poolAddress as Address, context);
-
       if (claveAddresses.has(fromAddress)) {
         // Update sender's account balance
-        let accountObject: SyncswapEarnBalance = {
+        const prevAccountObject: SyncswapEarnBalance = {
           id: fromAddress + poolAddress,
-          shareBalance:
-            senderAccountBalance == undefined
-              ? 0n - event.params.value
-              : senderAccountBalance.shareBalance - event.params.value,
+          shareBalance: senderAccountBalance == undefined ? 0n : senderAccountBalance.shareBalance,
           userAddress: fromAddress,
           syncswapPool_id: poolAddress,
         };
 
+        const accountObject = {
+          ...prevAccountObject,
+          shareBalance: prevAccountObject.shareBalance - event.params.value,
+        };
+
         context.SyncswapEarnBalance.set(accountObject);
-        context.HistoricalSyncswapEarnBalance.set({
-          ...accountObject,
-          id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
-          timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-        });
+        setHistoricalSyncswapPoolBalances(prevAccountObject, context, event.block.timestamp);
       }
 
       if (claveAddresses.has(toAddress)) {
         // Update receiver's account balance
-        let accountObject: SyncswapEarnBalance = {
+        const prevAccountObject: SyncswapEarnBalance = {
           id: toAddress + poolAddress,
           shareBalance:
-            receiverAccountBalance == undefined
-              ? event.params.value
-              : event.params.value + receiverAccountBalance.shareBalance,
+            receiverAccountBalance == undefined ? 0n : receiverAccountBalance.shareBalance,
           userAddress: toAddress,
           syncswapPool_id: poolAddress,
         };
 
+        const accountObject = {
+          ...prevAccountObject,
+          shareBalance: prevAccountObject.shareBalance + event.params.value,
+        };
+
         context.SyncswapEarnBalance.set(accountObject);
-        context.HistoricalSyncswapEarnBalance.set({
-          ...accountObject,
-          id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
-          timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-        });
+        setHistoricalSyncswapPoolBalances(prevAccountObject, context, event.block.timestamp);
       }
     } catch (error) {
       context.log.error(`Error in SyncswapAccountHandler: ${error}`);
@@ -225,114 +151,125 @@ SyncswapPool.Transfer.handlerWithLoader({
   },
 });
 
-/**
- * Creates a new Syncswap pool entry in the database
- * Fetches pool details including name, symbol, and precision multipliers
- * @param event The pool creation event
- * @param context The handler context
- * @returns The newly created pool object
- */
-export async function createPool(
-  event: SyncswapFactory_PoolCreated_event,
-  context: handlerContext
+async function createOrGetSyncswapPool(
+  poolAddress: Address,
+  context: handlerContext,
+  blockNumber?: bigint
 ) {
-  const contract = getContract({
-    address: event.params.pool.toLowerCase() as Address,
-    abi: SyncswapPoolABI,
-    client: client as Client,
-  });
-  const [name, symbol, poolType, token0Precision, token1Precision, totalSupply] =
-    await client.multicall({
-      contracts: [
-        { ...contract, functionName: "name" },
-        { ...contract, functionName: "symbol" },
-        { ...contract, functionName: "poolType" },
-        { ...contract, functionName: "token0PrecisionMultiplier" },
-        { ...contract, functionName: "token1PrecisionMultiplier" },
-        { ...contract, functionName: "totalSupply" },
-      ],
-    });
-
-  const newSyncswapPool: SyncswapPool_t = {
-    id: event.params.pool.toLowerCase(),
-    address: event.params.pool.toLowerCase(),
-    underlyingToken: event.params.token0.toLowerCase(),
-    underlyingToken2: event.params.token1.toLowerCase(),
-    name: name.result as string,
-    symbol: symbol.result as string,
-    poolType: poolType.result as bigint,
-    token0PrecisionMultiplier: (token0Precision.result as bigint) ?? 1n,
-    token1PrecisionMultiplier: (token1Precision.result as bigint) ?? 1n,
-    reserve0: 0n,
-    reserve1: 0n,
-    totalSupply: totalSupply.result as bigint,
-  };
-
-  context.PoolRegistry.set({
-    id: event.params.pool.toLowerCase(),
-    protocol: "Syncswap",
-    pool: event.params.pool.toLowerCase(),
-  });
-
-  context.SyncswapPool.set(newSyncswapPool);
-
-  return newSyncswapPool;
-}
-
-export async function getOrCreateSyncswapPool(poolAddress: Address, context: handlerContext) {
-  const existingPool = await context.SyncswapPool.get(poolAddress.toLowerCase() as Address);
+  const existingPool = await context.SyncswapPool.get(poolAddress.toLowerCase());
   if (existingPool != undefined) {
     return existingPool;
   }
 
-  const contract = getContract({
-    address: poolAddress.toLowerCase() as Address,
-    abi: SyncswapPoolABI,
-    client: client as Client,
-  });
-
-  const [name, symbol, poolType, token0Precision, token1Precision, totalSupply, token0, token1] =
-    await client.multicall({
-      contracts: [
-        { ...contract, functionName: "name" },
-        { ...contract, functionName: "symbol" },
-        { ...contract, functionName: "poolType" },
-        { ...contract, functionName: "token0PrecisionMultiplier" },
-        { ...contract, functionName: "token1PrecisionMultiplier" },
-        { ...contract, functionName: "totalSupply" },
-        { ...contract, functionName: "token0" },
-        { ...contract, functionName: "token1" },
-      ],
+  try {
+    const contract = getContract({
+      address: poolAddress.toLowerCase() as Address,
+      abi: SyncswapPoolABI,
+      client: client as Client,
     });
 
-  const newSyncswapPool: SyncswapPool_t = {
-    id: poolAddress.toLowerCase(),
-    address: poolAddress.toLowerCase(),
-    underlyingToken: token0.result
-      ? (token0.result as Address).toLowerCase()
-      : poolAddress.toLowerCase(),
-    underlyingToken2: token1.result
-      ? (token1.result as Address).toLowerCase()
-      : poolAddress.toLowerCase(),
-    name: (name.result as string) ?? "Unknown",
-    symbol: (symbol.result as string) ?? "UNK",
-    poolType: (poolType.result as bigint) ?? 0n,
-    token0PrecisionMultiplier: (token0Precision.result as bigint) ?? 1n,
-    token1PrecisionMultiplier: (token1Precision.result as bigint) ?? 1n,
-    reserve0: 0n,
-    reserve1: 0n,
-    totalSupply: (totalSupply.result as bigint) ?? 0n,
-  };
+    const [name, symbol, poolType, token0Precision, token1Precision, totalSupply, token0, token1] =
+      await client.multicall({
+        contracts: [
+          { ...contract, functionName: "name" },
+          { ...contract, functionName: "symbol" },
+          { ...contract, functionName: "poolType" },
+          { ...contract, functionName: "token0PrecisionMultiplier" },
+          { ...contract, functionName: "token1PrecisionMultiplier" },
+          { ...contract, functionName: "totalSupply" },
+          { ...contract, functionName: "token0" },
+          { ...contract, functionName: "token1" },
+        ],
+        blockNumber,
+      });
 
-  context.PoolRegistry.set({
-    id: poolAddress.toLowerCase(),
-    protocol: "Syncswap",
-    pool: poolAddress.toLowerCase(),
+    // Validate results
+    if (!name.result || !symbol.result || !poolType.result) {
+      context.log.error(`Failed to fetch pool data for ${poolAddress} on Syncswap`);
+    }
+
+    const newSyncswapPool: SyncswapPool_t = {
+      id: poolAddress.toLowerCase(),
+      address: poolAddress.toLowerCase(),
+      underlyingToken: token0.result
+        ? (token0.result as Address).toLowerCase()
+        : poolAddress.toLowerCase(),
+      underlyingToken2: token1.result
+        ? (token1.result as Address).toLowerCase()
+        : poolAddress.toLowerCase(),
+      name: name.result as string,
+      symbol: symbol.result as string,
+      poolType: poolType.result as bigint,
+      token0PrecisionMultiplier: (token0Precision.result as bigint) ?? 1n,
+      token1PrecisionMultiplier: (token1Precision.result as bigint) ?? 1n,
+      reserve0: 0n,
+      reserve1: 0n,
+      totalSupply: (totalSupply.result as bigint) ?? 0n,
+    };
+
+    await Promise.all([
+      context.PoolRegistry.set({
+        id: poolAddress.toLowerCase(),
+        protocol: "Syncswap",
+        pool: poolAddress.toLowerCase(),
+      }),
+      context.SyncswapPool.set(newSyncswapPool),
+    ]);
+
+    return newSyncswapPool;
+  } catch (error) {
+    context.log.error(`Failed to create/get Syncswap pool ${poolAddress}: ${error}`);
+    throw error;
+  }
+}
+
+function setHistoricalSyncswapPoolBalances(
+  accountObject: SyncswapEarnBalance,
+  context: handlerContext,
+  timestamp: number
+) {
+  context.HistoricalSyncswapEarnBalance4Hours.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp),
+    timestamp: BigInt(roundTimestamp(timestamp)),
   });
+  context.HistoricalSyncswapEarnBalance1Day.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400)),
+  });
+  context.HistoricalSyncswapEarnBalance7Days.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400 * 7),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
+  });
+  context.HistoricalSyncswapEarnBalance1Month.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400 * 30),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
+  });
+}
 
-  context.SyncswapPool.set(newSyncswapPool);
-
-  return newSyncswapPool;
+function setHistoricalSyncswapPool(
+  poolObject: SyncswapPool_t,
+  context: handlerContext,
+  timestamp: number
+) {
+  context.HistoricalSyncswapPoolDaily.set({
+    ...poolObject,
+    id: poolObject.id + roundTimestamp(timestamp),
+    timestamp: BigInt(roundTimestamp(timestamp)),
+  });
+  context.HistoricalSyncswapPoolWeekly.set({
+    ...poolObject,
+    id: poolObject.id + roundTimestamp(timestamp, 86400 * 7),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
+  });
+  context.HistoricalSyncswapPoolMonthly.set({
+    ...poolObject,
+    id: poolObject.id + roundTimestamp(timestamp, 86400 * 30),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
+  });
 }
 
 /**

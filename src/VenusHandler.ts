@@ -5,7 +5,7 @@
  */
 
 import { Address, Client, getContract } from "viem";
-import { getOrCreateClaggPool } from "./ClaggHandler";
+import { getOrCreateClaggPool, setHistoricalClaggPool } from "./ClaggHandler";
 import { Venus } from "generated";
 import { handlerContext, Venus_Transfer_event, VenusEarnBalance, VenusPool } from "generated";
 import { VenusPoolABI } from "./abi/VenusPool";
@@ -13,60 +13,6 @@ import { client } from "./viem/Client";
 import { roundTimestamp } from "./utils/helpers";
 import { walletCache } from "./utils/WalletCache";
 import { ClaggMainAddress } from "./constants/ClaggAddresses";
-import { venusExchangeRateInterval } from "./utils/intervals";
-
-Venus.AccrueInterest.handler(async ({ context, event }) => {
-  if (
-    process.env.NODE_ENV === "test" ||
-    venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)
-  ) {
-    await setNewExchangeRate(
-      event.srcAddress.toLowerCase() as Address,
-      context,
-      event.block.timestamp
-    );
-  }
-});
-
-Venus.Borrow.handler(async ({ context, event }) => {
-  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(
-      event.srcAddress.toLowerCase() as Address,
-      context,
-      event.block.timestamp
-    );
-  }
-});
-
-Venus.RepayBorrow.handler(async ({ context, event }) => {
-  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(
-      event.srcAddress.toLowerCase() as Address,
-      context,
-      event.block.timestamp
-    );
-  }
-});
-
-Venus.BadDebtIncreased.handler(async ({ context, event }) => {
-  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(
-      event.srcAddress.toLowerCase() as Address,
-      context,
-      event.block.timestamp
-    );
-  }
-});
-
-Venus.BadDebtRecovered.handler(async ({ context, event }) => {
-  if (venusExchangeRateInterval.shouldFetch(event.srcAddress.toLowerCase(), event.block.number)) {
-    await setNewExchangeRate(
-      event.srcAddress.toLowerCase() as Address,
-      context,
-      event.block.timestamp
-    );
-  }
-});
 
 Venus.Transfer.handlerWithLoader({
   loader: async ({ event }) => {
@@ -83,8 +29,6 @@ Venus.Transfer.handlerWithLoader({
       claveAddresses = new Set([event.params.from.toLowerCase(), event.params.to.toLowerCase()]);
     }
 
-    const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
-
     if (event.params.from === event.params.to) {
       return;
     }
@@ -95,6 +39,15 @@ Venus.Transfer.handlerWithLoader({
       }
     }
 
+    const pool = await getOrCreateVenusPool(event.srcAddress.toLowerCase() as Address, context);
+
+    await setNewExchangeRate(
+      event.srcAddress.toLowerCase() as Address,
+      context,
+      event.block.timestamp,
+      BigInt(event.block.number)
+    );
+
     if (event.params.from.toLowerCase() == ClaggMainAddress.toLowerCase()) {
       const pool = await getOrCreateClaggPool(event.srcAddress.toLowerCase() as Address, context);
 
@@ -104,11 +57,7 @@ Venus.Transfer.handlerWithLoader({
       };
 
       context.ClaggPool.set(adjustedPool);
-      context.HistoricalClaggPool.set({
-        ...adjustedPool,
-        id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-        timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-      });
+      setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
       return;
     }
 
@@ -120,11 +69,7 @@ Venus.Transfer.handlerWithLoader({
       };
 
       context.ClaggPool.set(adjustedPool);
-      context.HistoricalClaggPool.set({
-        ...adjustedPool,
-        id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-        timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-      });
+      setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
       return;
     }
 
@@ -137,42 +82,39 @@ Venus.Transfer.handlerWithLoader({
 
     if (claveAddresses.has(event.params.from.toLowerCase())) {
       // Update sender's account balance
-      let accountObject: VenusEarnBalance = {
+      const prevAccountObject: VenusEarnBalance = {
         id: event.params.from.toLowerCase() + event.srcAddress.toLowerCase(),
-        shareBalance:
-          senderAccountBalance == undefined
-            ? 0n - event.params.value
-            : senderAccountBalance.shareBalance - event.params.value,
+        shareBalance: senderAccountBalance == undefined ? 0n : senderAccountBalance.shareBalance,
         userAddress: event.params.from.toLowerCase(),
         venusPool_id: pool.id,
       };
 
-      context.VenusEarnBalance.set(accountObject);
-      context.HistoricalVenusEarnBalance.set({
-        ...accountObject,
-        id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
-        timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-      });
+      const updatedAccountObject: VenusEarnBalance = {
+        ...prevAccountObject,
+        shareBalance: prevAccountObject.shareBalance - event.params.value,
+      };
+
+      context.VenusEarnBalance.set(updatedAccountObject);
+      setHistoricalVenusEarnBalance(prevAccountObject, context, event.block.timestamp);
     }
 
     if (claveAddresses.has(event.params.to.toLowerCase())) {
       // Update receiver's account balance
-      let accountObject: VenusEarnBalance = {
+      const prevAccountObject: VenusEarnBalance = {
         id: event.params.to.toLowerCase() + event.srcAddress.toLowerCase(),
         shareBalance:
-          receiverAccountBalance == undefined
-            ? event.params.value
-            : event.params.value + receiverAccountBalance.shareBalance,
+          receiverAccountBalance == undefined ? 0n : receiverAccountBalance.shareBalance,
         userAddress: event.params.to.toLowerCase(),
         venusPool_id: pool.id,
       };
 
-      context.VenusEarnBalance.set(accountObject);
-      context.HistoricalVenusEarnBalance.set({
-        ...accountObject,
-        id: accountObject.id + roundTimestamp(event.block.timestamp, 3600),
-        timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-      });
+      const updatedAccountObject: VenusEarnBalance = {
+        ...prevAccountObject,
+        shareBalance: prevAccountObject.shareBalance + event.params.value,
+      };
+
+      context.VenusEarnBalance.set(updatedAccountObject);
+      setHistoricalVenusEarnBalance(prevAccountObject, context, event.block.timestamp);
     }
   },
 });
@@ -228,7 +170,8 @@ async function getOrCreateVenusPool(poolAddress: Address, context: handlerContex
 async function setNewExchangeRate(
   poolAddress: Address,
   context: handlerContext,
-  timestamp: number
+  timestamp: number,
+  blockNumber?: bigint
 ) {
   const contract = getContract({
     address: poolAddress.toLowerCase() as Address,
@@ -238,6 +181,7 @@ async function setNewExchangeRate(
 
   const [exchangeRate] = await client.multicall({
     contracts: [{ ...contract, functionName: "exchangeRateStored" }],
+    blockNumber,
   });
 
   const pool = await getOrCreateVenusPool(poolAddress, context);
@@ -249,10 +193,52 @@ async function setNewExchangeRate(
 
   context.VenusPool.set(adjustedPool);
 
-  context.HistoricalVenusPool.set({
+  context.HistoricalVenusPoolDaily.set({
     ...adjustedPool,
     id: adjustedPool.id + roundTimestamp(timestamp),
     timestamp: BigInt(roundTimestamp(timestamp)),
+  });
+
+  context.HistoricalVenusPoolWeekly.set({
+    ...adjustedPool,
+    id: adjustedPool.id + roundTimestamp(timestamp, 86400 * 7),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
+  });
+
+  context.HistoricalVenusPoolMonthly.set({
+    ...adjustedPool,
+    id: adjustedPool.id + roundTimestamp(timestamp, 86400 * 30),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
+  });
+}
+
+function setHistoricalVenusEarnBalance(
+  accountObject: VenusEarnBalance,
+  context: handlerContext,
+  timestamp: number
+) {
+  context.HistoricalVenusEarnBalance4Hours.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 3600 * 4),
+    timestamp: BigInt(roundTimestamp(timestamp, 3600 * 4)),
+  });
+
+  context.HistoricalVenusEarnBalance1Day.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400)),
+  });
+
+  context.HistoricalVenusEarnBalance7Days.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400 * 7),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
+  });
+
+  context.HistoricalVenusEarnBalance1Month.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400 * 30),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
   });
 }
 

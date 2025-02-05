@@ -3,15 +3,38 @@
 type Account {
   id: ID! # User address
   address: String! @index
-  syncswapEarnBalances: [SyncswapEarnBalance!]! @derivedFrom(field: "userAddress")
-  venusEarnBalances: [VenusEarnBalance!]! @derivedFrom(field: "userAddress")
+
+  # Aave Data
   aaveEarnBalances: [AaveEarnBalance!]! @derivedFrom(field: "userAddress")
+  hourlyAaveEarnBalances: [HistoricalAaveEarnBalance4Hours!]! @derivedFrom(field: "userAddress")
+  dailyAaveEarnBalances: [HistoricalAaveEarnBalance1Day!]! @derivedFrom(field: "userAddress")
+  weeklyAaveEarnBalances: [HistoricalAaveEarnBalance7Days!]! @derivedFrom(field: "userAddress")
+  monthlyAaveEarnBalances: [HistoricalAaveEarnBalance1Month!]! @derivedFrom(field: "userAddress")
+
+  # Clagg Data
   claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "userAddress")
-  historicalSyncswapEarnBalances: [HistoricalSyncswapEarnBalance!]!
+  hourlyClaggEarnBalances: [HistoricalClaggEarnBalance4Hours!]! @derivedFrom(field: "userAddress")
+  dailyClaggEarnBalances: [HistoricalClaggEarnBalance1Day!]! @derivedFrom(field: "userAddress")
+  weeklyClaggEarnBalances: [HistoricalClaggEarnBalance7Days!]! @derivedFrom(field: "userAddress")
+  monthlyClaggEarnBalances: [HistoricalClaggEarnBalance1Month!]! @derivedFrom(field: "userAddress")
+
+  # Syncswap Data
+  syncswapEarnBalances: [SyncswapEarnBalance!]! @derivedFrom(field: "userAddress")
+  hourlySyncswapEarnBalances: [HistoricalSyncswapEarnBalance4Hours!]!
     @derivedFrom(field: "userAddress")
-  historicalVenusEarnBalances: [HistoricalVenusEarnBalance!]! @derivedFrom(field: "userAddress")
-  historicalAaveEarnBalances: [HistoricalAaveEarnBalance!]! @derivedFrom(field: "userAddress")
-  historicalClaggEarnBalances: [HistoricalClaggEarnBalance!]! @derivedFrom(field: "userAddress")
+  dailySyncswapEarnBalances: [HistoricalSyncswapEarnBalance1Day!]!
+    @derivedFrom(field: "userAddress")
+  weeklySyncswapEarnBalances: [HistoricalSyncswapEarnBalance7Days!]!
+    @derivedFrom(field: "userAddress")
+  monthlySyncswapEarnBalances: [HistoricalSyncswapEarnBalance1Month!]!
+    @derivedFrom(field: "userAddress")
+
+  # Venus Data
+  venusEarnBalances: [VenusEarnBalance!]! @derivedFrom(field: "userAddress")
+  hourlyVenusEarnBalances: [HistoricalVenusEarnBalance4Hours!]! @derivedFrom(field: "userAddress")
+  dailyVenusEarnBalances: [HistoricalVenusEarnBalance1Day!]! @derivedFrom(field: "userAddress")
+  weeklyVenusEarnBalances: [HistoricalVenusEarnBalance7Days!]! @derivedFrom(field: "userAddress")
+  monthlyVenusEarnBalances: [HistoricalVenusEarnBalance1Month!]! @derivedFrom(field: "userAddress")
 }
 
 # EARN
@@ -31,6 +54,8 @@ type PoolRegistry {
   aavePool: [AavePool!]! @derivedFrom(field: "address")
 }
 
+#! Venus Protocol
+
 type VenusEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
@@ -38,7 +63,31 @@ type VenusEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   venusPool: VenusPool @index
 }
 
-type HistoricalVenusEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+type HistoricalVenusEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  venusPool: VenusPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalVenusEarnBalance1Day @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  venusPool: VenusPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalVenusEarnBalance7Days @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  venusPool: VenusPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalVenusEarnBalance1Month @index(fields: ["userAddress", "timestamp"]) {
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
@@ -55,7 +104,7 @@ type VenusPool {
   exchangeRate: BigInt!
 }
 
-type HistoricalVenusPool @index(fields: ["address", "timestamp"]) {
+type HistoricalVenusPoolDaily @index(fields: ["address", "timestamp"]) {
   id: ID! # Pool address + timestamp
   address: String! @index
   timestamp: BigInt! @index
@@ -65,6 +114,28 @@ type HistoricalVenusPool @index(fields: ["address", "timestamp"]) {
   exchangeRate: BigInt!
 }
 
+type HistoricalVenusPoolWeekly @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  exchangeRate: BigInt!
+}
+
+type HistoricalVenusPoolMonthly @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  exchangeRate: BigInt!
+}
+
+#! Syncswap Protocol
+
 type SyncswapEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
@@ -72,7 +143,31 @@ type SyncswapEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   syncswapPool: SyncswapPool @index
 }
 
-type HistoricalSyncswapEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+type HistoricalSyncswapEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  syncswapPool: SyncswapPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalSyncswapEarnBalance1Day @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  syncswapPool: SyncswapPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalSyncswapEarnBalance7Days @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  syncswapPool: SyncswapPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalSyncswapEarnBalance1Month @index(fields: ["userAddress", "timestamp"]) {
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
@@ -95,7 +190,7 @@ type SyncswapPool {
   totalSupply: BigInt!
 }
 
-type HistoricalSyncswapPool @index(fields: ["address", "timestamp"]) {
+type HistoricalSyncswapPoolDaily @index(fields: ["address", "timestamp"]) {
   id: ID! # Pool address + timestamp
   address: String! @index
   timestamp: BigInt! @index
@@ -111,6 +206,40 @@ type HistoricalSyncswapPool @index(fields: ["address", "timestamp"]) {
   totalSupply: BigInt!
 }
 
+type HistoricalSyncswapPoolWeekly @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  underlyingToken2: String
+  poolType: BigInt
+  token0PrecisionMultiplier: BigInt
+  token1PrecisionMultiplier: BigInt
+  reserve0: BigInt!
+  reserve1: BigInt!
+  totalSupply: BigInt!
+}
+
+type HistoricalSyncswapPoolMonthly @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  underlyingToken2: String
+  poolType: BigInt
+  token0PrecisionMultiplier: BigInt
+  token1PrecisionMultiplier: BigInt
+  reserve0: BigInt!
+  reserve1: BigInt!
+  totalSupply: BigInt!
+}
+
+#! Aave Protocol
+
 type AaveEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
@@ -119,7 +248,34 @@ type AaveEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   aavePool: AavePool @index
 }
 
-type HistoricalAaveEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+type HistoricalAaveEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  aavePool: AavePool @index
+  userIndex: BigInt!
+  timestamp: BigInt! @index
+}
+
+type HistoricalAaveEarnBalance1Day @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  aavePool: AavePool @index
+  userIndex: BigInt!
+  timestamp: BigInt! @index
+}
+
+type HistoricalAaveEarnBalance7Days @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  aavePool: AavePool @index
+  userIndex: BigInt!
+  timestamp: BigInt! @index
+}
+
+type HistoricalAaveEarnBalance1Month @index(fields: ["userAddress", "timestamp"]) {
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
@@ -137,7 +293,7 @@ type AavePool {
   lastIndex: BigInt!
 }
 
-type HistoricalAavePool @index(fields: ["address", "timestamp"]) {
+type HistoricalAavePoolDaily @index(fields: ["address", "timestamp"]) {
   id: ID! # Pool address + timestamp
   address: String! @index
   timestamp: BigInt! @index
@@ -146,6 +302,28 @@ type HistoricalAavePool @index(fields: ["address", "timestamp"]) {
   underlyingToken: String
   lastIndex: BigInt!
 }
+
+type HistoricalAavePoolWeekly @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  lastIndex: BigInt!
+}
+
+type HistoricalAavePoolMonthly @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  name: String
+  symbol: String
+  underlyingToken: String
+  lastIndex: BigInt!
+}
+
+#! Clagg Protocol
 
 type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   id: ID! # User address + pool address
@@ -156,7 +334,37 @@ type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   claggPool: ClaggPool @index
 }
 
-type HistoricalClaggEarnBalance @index(fields: ["userAddress", "timestamp"]) {
+type HistoricalClaggEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  totalDeposits: BigInt! # In terms of underlying token
+  totalWithdrawals: BigInt! # In terms of underlying token
+  claggPool: ClaggPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalClaggEarnBalance1Day @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  totalDeposits: BigInt! # In terms of underlying token
+  totalWithdrawals: BigInt! # In terms of underlying token
+  claggPool: ClaggPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalClaggEarnBalance7Days @index(fields: ["userAddress", "timestamp"]) {
+  id: ID! # User address + pool address + timestamp
+  userAddress: String! @index
+  shareBalance: BigInt!
+  totalDeposits: BigInt! # In terms of underlying token
+  totalWithdrawals: BigInt! # In terms of underlying token
+  claggPool: ClaggPool @index
+  timestamp: BigInt! @index
+}
+
+type HistoricalClaggEarnBalance1Month @index(fields: ["userAddress", "timestamp"]) {
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
@@ -174,7 +382,23 @@ type ClaggPool {
   poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
 }
 
-type HistoricalClaggPool @index(fields: ["address", "timestamp"]) {
+type HistoricalClaggPoolDaily @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  totalShares: BigInt!
+  totalSupply: BigInt!
+}
+
+type HistoricalClaggPoolWeekly @index(fields: ["address", "timestamp"]) {
+  id: ID! # Pool address + timestamp
+  address: String! @index
+  timestamp: BigInt! @index
+  totalShares: BigInt!
+  totalSupply: BigInt!
+}
+
+type HistoricalClaggPoolMonthly @index(fields: ["address", "timestamp"]) {
   id: ID! # Pool address + timestamp
   address: String! @index
   timestamp: BigInt! @index

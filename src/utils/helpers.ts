@@ -1,3 +1,3 @@
-export function roundTimestamp(timestamp: number, ms: number = 86400) {
-  return (Math.floor(timestamp / ms) * ms).toString();
+export function roundTimestamp(timestamp: number, sn: number = 86400) {
+  return (Math.floor(timestamp / sn) * sn).toString();
 }

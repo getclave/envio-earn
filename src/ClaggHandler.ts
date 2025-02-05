@@ -30,33 +30,25 @@ ClaggMain.Deposit.handlerWithLoader({
     };
     // Update pool total shares
     context.ClaggPool.set(adjustedPool);
-    context.HistoricalClaggPool.set({
-      ...adjustedPool,
-      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-    });
+    setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
 
-    const createdUserBalance: ClaggEarnBalance_t = {
+    const previousUserBalance: ClaggEarnBalance_t = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
       userAddress: event.params.user.toLowerCase(),
-      shareBalance:
-        userBalance == undefined
-          ? event.params.shares
-          : userBalance.shareBalance + event.params.shares,
-      totalDeposits:
-        userBalance == undefined
-          ? event.params.amount
-          : userBalance.totalDeposits + event.params.amount,
+      shareBalance: userBalance == undefined ? 0n : userBalance.shareBalance,
+      totalDeposits: userBalance == undefined ? 0n : userBalance.totalDeposits,
       totalWithdrawals: userBalance == undefined ? 0n : userBalance.totalWithdrawals,
       claggPool_id: event.params.pool.toLowerCase(),
     };
 
+    const createdUserBalance: ClaggEarnBalance_t = {
+      ...previousUserBalance,
+      shareBalance: previousUserBalance.shareBalance + event.params.shares,
+      totalDeposits: previousUserBalance.totalDeposits + event.params.amount,
+    };
+
     context.ClaggEarnBalance.set(createdUserBalance);
-    context.HistoricalClaggEarnBalance.set({
-      ...createdUserBalance,
-      id: createdUserBalance.id + roundTimestamp(event.block.timestamp, 3600),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-    });
+    setHistoricalClaggEarnBalance(previousUserBalance, context, event.block.timestamp);
 
     const createdUser: Account_t = {
       id: event.params.user.toLowerCase(),
@@ -94,33 +86,25 @@ ClaggMain.Withdraw.handlerWithLoader({
     };
     // Update pool total shares
     context.ClaggPool.set(adjustedPool);
-    context.HistoricalClaggPool.set({
-      ...adjustedPool,
-      id: adjustedPool.id + roundTimestamp(event.block.timestamp),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp)),
-    });
+    setHistoricalClaggPool(adjustedPool, context, event.block.timestamp);
 
-    const createdUserBalance: ClaggEarnBalance_t = {
+    const previousUserBalance: ClaggEarnBalance_t = {
       id: event.params.user.toLowerCase() + event.params.pool.toLowerCase(),
       userAddress: event.params.user.toLowerCase(),
-      shareBalance:
-        userBalance == undefined
-          ? 0n - event.params.shares
-          : userBalance.shareBalance - event.params.shares,
+      shareBalance: userBalance == undefined ? 0n : userBalance.shareBalance,
       totalDeposits: userBalance == undefined ? 0n : userBalance.totalDeposits,
-      totalWithdrawals:
-        userBalance == undefined
-          ? event.params.amount
-          : userBalance.totalWithdrawals + event.params.amount,
+      totalWithdrawals: userBalance == undefined ? 0n : userBalance.totalWithdrawals,
       claggPool_id: event.params.pool.toLowerCase(),
     };
 
+    const createdUserBalance: ClaggEarnBalance_t = {
+      ...previousUserBalance,
+      shareBalance: previousUserBalance.shareBalance - event.params.shares,
+      totalWithdrawals: previousUserBalance.totalWithdrawals + event.params.amount,
+    };
+
     context.ClaggEarnBalance.set(createdUserBalance);
-    context.HistoricalClaggEarnBalance.set({
-      ...createdUserBalance,
-      id: createdUserBalance.id + roundTimestamp(event.block.timestamp, 3600),
-      timestamp: BigInt(roundTimestamp(event.block.timestamp, 3600)),
-    });
+    setHistoricalClaggEarnBalance(previousUserBalance, context, event.block.timestamp);
 
     const createdUser: Account_t = {
       id: event.params.user.toLowerCase(),
@@ -155,4 +139,53 @@ export async function getOrCreateClaggPool(
   context.ClaggPool.set(newClaggPool);
 
   return newClaggPool;
+}
+
+function setHistoricalClaggEarnBalance(
+  accountObject: ClaggEarnBalance_t,
+  context: handlerContext,
+  timestamp: number
+) {
+  context.HistoricalClaggEarnBalance4Hours.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 3600 * 4),
+    timestamp: BigInt(roundTimestamp(timestamp, 3600 * 4)),
+  });
+  context.HistoricalClaggEarnBalance1Day.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400)),
+  });
+  context.HistoricalClaggEarnBalance7Days.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400 * 7),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
+  });
+  context.HistoricalClaggEarnBalance1Month.set({
+    ...accountObject,
+    id: accountObject.id + roundTimestamp(timestamp, 86400 * 30),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
+  });
+}
+
+export function setHistoricalClaggPool(
+  poolObject: ClaggPool_t,
+  context: handlerContext,
+  timestamp: number
+) {
+  context.HistoricalClaggPoolDaily.set({
+    ...poolObject,
+    id: poolObject.id + roundTimestamp(timestamp),
+    timestamp: BigInt(roundTimestamp(timestamp)),
+  });
+  context.HistoricalClaggPoolWeekly.set({
+    ...poolObject,
+    id: poolObject.id + roundTimestamp(timestamp, 86400 * 7),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 7)),
+  });
+  context.HistoricalClaggPoolMonthly.set({
+    ...poolObject,
+    id: poolObject.id + roundTimestamp(timestamp, 86400 * 30),
+    timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
+  });
 }
