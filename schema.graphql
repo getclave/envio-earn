@@ -49,9 +49,8 @@ type PoolRegistry {
   id: ID! # Pool address
   protocol: Protocol!
   pool: String! @index
-  venusPool: [VenusPool!]! @derivedFrom(field: "address")
-  syncswapPool: [SyncswapPool!]! @derivedFrom(field: "address")
-  aavePool: [AavePool!]! @derivedFrom(field: "address")
+  underlyingToken0: String
+  underlyingToken1: String
 }
 
 #! Venus Protocol
@@ -60,7 +59,10 @@ type VenusEarnBalance @index(fields: ["userAddress", "shareBalance", "tokenAmoun
   id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
-  venusPool: VenusPool @index
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
 }
 
@@ -68,7 +70,10 @@ type HistoricalVenusEarnBalance4Hours @index(fields: ["userAddress", "timestamp"
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  venusPool: VenusPool @index
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
@@ -77,7 +82,10 @@ type HistoricalVenusEarnBalance1Day @index(fields: ["userAddress", "timestamp"])
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  venusPool: VenusPool @index
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
@@ -86,7 +94,10 @@ type HistoricalVenusEarnBalance7Days @index(fields: ["userAddress", "timestamp"]
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  venusPool: VenusPool @index
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
@@ -95,18 +106,12 @@ type HistoricalVenusEarnBalance1Month @index(fields: ["userAddress", "timestamp"
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  venusPool: VenusPool @index
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
   timestamp: BigInt! @index
-}
-
-type VenusPool {
-  id: ID! # Pool address
-  address: String! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  exchangeRate: BigInt!
 }
 
 #! Syncswap Protocol
@@ -118,7 +123,11 @@ type SyncswapEarnBalance
   shareBalance: BigInt! @index
   tokenAmount0: BigInt! @index
   tokenAmount1: BigInt! @index
-  syncswapPool: SyncswapPool @index
+  underlyingToken0: String
+  underlyingToken1: String
+  poolName: String
+  poolSymbol: String
+  poolAddress: String! @index
 }
 
 type HistoricalSyncswapEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
@@ -127,7 +136,11 @@ type HistoricalSyncswapEarnBalance4Hours @index(fields: ["userAddress", "timesta
   shareBalance: BigInt!
   tokenAmount0: BigInt!
   tokenAmount1: BigInt!
-  syncswapPool: SyncswapPool @index
+  underlyingToken0: String
+  underlyingToken1: String
+  poolName: String
+  poolSymbol: String
+  poolAddress: String! @index
   timestamp: BigInt! @index
 }
 
@@ -137,7 +150,11 @@ type HistoricalSyncswapEarnBalance1Day @index(fields: ["userAddress", "timestamp
   shareBalance: BigInt!
   tokenAmount0: BigInt!
   tokenAmount1: BigInt!
-  syncswapPool: SyncswapPool @index
+  underlyingToken0: String
+  underlyingToken1: String
+  poolName: String
+  poolSymbol: String
+  poolAddress: String! @index
   timestamp: BigInt! @index
 }
 
@@ -147,7 +164,11 @@ type HistoricalSyncswapEarnBalance7Days @index(fields: ["userAddress", "timestam
   shareBalance: BigInt!
   tokenAmount0: BigInt!
   tokenAmount1: BigInt!
-  syncswapPool: SyncswapPool @index
+  underlyingToken0: String
+  underlyingToken1: String
+  poolName: String
+  poolSymbol: String
+  poolAddress: String! @index
   timestamp: BigInt! @index
 }
 
@@ -157,21 +178,12 @@ type HistoricalSyncswapEarnBalance1Month @index(fields: ["userAddress", "timesta
   shareBalance: BigInt!
   tokenAmount0: BigInt!
   tokenAmount1: BigInt!
-  syncswapPool: SyncswapPool @index
+  underlyingToken0: String
+  underlyingToken1: String
+  poolName: String
+  poolSymbol: String
+  poolAddress: String! @index
   timestamp: BigInt! @index
-}
-
-type SyncswapPool {
-  id: ID! # Pool address
-  name: String
-  symbol: String
-  address: String! @index
-  underlyingToken: String
-  underlyingToken2: String
-  poolType: BigInt
-  reserve0: BigInt!
-  reserve1: BigInt!
-  totalSupply: BigInt!
 }
 
 #! Aave Protocol
@@ -180,18 +192,22 @@ type AaveEarnBalance @index(fields: ["userAddress", "shareBalance", "tokenAmount
   id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
-  userIndex: BigInt!
   tokenAmount: BigInt! @index
-  aavePool: AavePool @index
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
 }
 
 type HistoricalAaveEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  aavePool: AavePool @index
-  userIndex: BigInt!
   tokenAmount: BigInt! @index
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   timestamp: BigInt! @index
 }
 
@@ -199,8 +215,10 @@ type HistoricalAaveEarnBalance1Day @index(fields: ["userAddress", "timestamp"]) 
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  aavePool: AavePool @index
-  userIndex: BigInt!
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
@@ -209,8 +227,10 @@ type HistoricalAaveEarnBalance7Days @index(fields: ["userAddress", "timestamp"])
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  aavePool: AavePool @index
-  userIndex: BigInt!
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
   timestamp: BigInt! @index
 }
@@ -219,19 +239,12 @@ type HistoricalAaveEarnBalance1Month @index(fields: ["userAddress", "timestamp"]
   id: ID! # User address + pool address + timestamp
   userAddress: String! @index
   shareBalance: BigInt!
-  aavePool: AavePool @index
-  userIndex: BigInt!
+  poolAddress: String! @index
+  poolName: String
+  poolSymbol: String
+  underlyingToken: String
   tokenAmount: BigInt! @index
   timestamp: BigInt! @index
-}
-
-type AavePool {
-  id: ID! # Pool address
-  address: String! @index
-  name: String
-  symbol: String
-  underlyingToken: String
-  lastIndex: BigInt!
 }
 
 #! Clagg Protocol
@@ -242,7 +255,10 @@ type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   shareBalance: BigInt! @index
   totalDeposits: BigInt! # In terms of underlying token
   totalWithdrawals: BigInt! # In terms of underlying token
-  claggPool: ClaggPool @index
+  tokenAmount0: BigInt! @index
+  tokenAmount1: BigInt! @index
+  poolAddress: String! @index
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
 }
 
 type HistoricalClaggEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
@@ -251,7 +267,10 @@ type HistoricalClaggEarnBalance4Hours @index(fields: ["userAddress", "timestamp"
   shareBalance: BigInt!
   totalDeposits: BigInt! # In terms of underlying token
   totalWithdrawals: BigInt! # In terms of underlying token
-  claggPool: ClaggPool @index
+  tokenAmount0: BigInt! @index
+  tokenAmount1: BigInt! @index
+  poolAddress: String! @index
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
   timestamp: BigInt! @index
 }
 
@@ -261,7 +280,10 @@ type HistoricalClaggEarnBalance1Day @index(fields: ["userAddress", "timestamp"])
   shareBalance: BigInt!
   totalDeposits: BigInt! # In terms of underlying token
   totalWithdrawals: BigInt! # In terms of underlying token
-  claggPool: ClaggPool @index
+  tokenAmount0: BigInt! @index
+  tokenAmount1: BigInt! @index
+  poolAddress: String! @index
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
   timestamp: BigInt! @index
 }
 
@@ -271,7 +293,10 @@ type HistoricalClaggEarnBalance7Days @index(fields: ["userAddress", "timestamp"]
   shareBalance: BigInt!
   totalDeposits: BigInt! # In terms of underlying token
   totalWithdrawals: BigInt! # In terms of underlying token
-  claggPool: ClaggPool @index
+  tokenAmount0: BigInt! @index
+  tokenAmount1: BigInt! @index
+  poolAddress: String! @index
+  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
   timestamp: BigInt! @index
 }
 
@@ -281,14 +306,9 @@ type HistoricalClaggEarnBalance1Month @index(fields: ["userAddress", "timestamp"
   shareBalance: BigInt!
   totalDeposits: BigInt! # In terms of underlying token
   totalWithdrawals: BigInt! # In terms of underlying token
-  claggPool: ClaggPool @index
-  timestamp: BigInt! @index
-}
-
-type ClaggPool {
-  id: ID! # Pool address
-  address: String! @index
-  totalShares: BigInt!
-  totalSupply: BigInt!
+  tokenAmount0: BigInt! @index
+  tokenAmount1: BigInt! @index
+  poolAddress: String! @index
   poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+  timestamp: BigInt! @index
 }

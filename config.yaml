@@ -3,7 +3,8 @@ name: clave-indexer
 description: Clave Balances Indexer
 networks:
   - id: 324
-    start_block: 9767
+    start_block: 44901180
+    end_block: 44901182
     contracts:
       - name: SyncswapFactory
         handler: src/SyncswapHandler.ts
@@ -29,8 +30,7 @@ networks:
           - 0xd4e607633F3d984633E946aEA4eb71f92564c1c9
           - 0xd6cD2c0fC55936498726CacC497832052A9B2D1B
         events:
-          - event: "Mint(address indexed caller, address indexed onBehalfOf, uint256 value, uint256 balanceIncrease, uint256 index)"
-          - event: "Burn(address indexed from, address indexed target, uint256 value, uint256 balanceIncrease, uint256 index)"
+          - event: "Transfer(address indexed from, address indexed to, uint256 value)"
       - name: Venus
         handler: src/VenusHandler.ts
         address:
