@@ -8,13 +8,13 @@ import { VenusPoolABI } from "../abi/VenusPool";
 import { client } from "../viem/Client";
 
 export async function shareToAmountVenus(
-  shares: bigint,
+  userAddress: Address,
   poolAddress: Address,
   context: handlerContext
 ) {
-  const pool = await getVenusPool(poolAddress, context);
+  const { pool, userBalance } = await getVenusPoolAndUserBalance(userAddress, poolAddress, context);
   return {
-    tokenAmount: (shares * pool.exchangeRate) / BigInt(10 ** 18),
+    tokenAmount: userBalance,
     poolDetails: pool,
   };
 }
@@ -26,19 +26,23 @@ export async function shareToAmountVenus(
  * @param context The handler context
  * @returns The Venus pool object
  */
-async function getVenusPool(poolAddress: Address, context: handlerContext) {
+async function getVenusPoolAndUserBalance(
+  userAddress: Address,
+  poolAddress: Address,
+  context: handlerContext
+) {
   const contract = getContract({
     address: poolAddress.toLowerCase() as Address,
     abi: VenusPoolABI,
     client: client as Client,
   });
 
-  const [name, symbol, underlyingToken, exchangeRate] = await client.multicall({
+  const [name, symbol, underlyingToken, userBalance] = await client.multicall({
     contracts: [
-      { ...contract, functionName: "name" },
-      { ...contract, functionName: "symbol" },
-      { ...contract, functionName: "underlying" },
-      { ...contract, functionName: "exchangeRateStored" },
+      { ...contract, functionName: "name", args: [] },
+      { ...contract, functionName: "symbol", args: [] },
+      { ...contract, functionName: "underlying", args: [] },
+      { ...contract, functionName: "balanceOfUnderlying", args: [userAddress] },
     ],
   });
 
@@ -48,7 +52,7 @@ async function getVenusPool(poolAddress: Address, context: handlerContext) {
     underlyingToken: (underlyingToken.result as Address).toLowerCase(),
     name: name.result as string,
     symbol: symbol.result as string,
-    exchangeRate: exchangeRate.result as bigint,
+    userBalance: userBalance.result as bigint,
   };
 
   context.PoolRegistry.set({
@@ -59,5 +63,5 @@ async function getVenusPool(poolAddress: Address, context: handlerContext) {
     underlyingToken1: underlyingToken.result as Address,
   });
 
-  return newVenusPool;
+  return { pool: newVenusPool, userBalance: userBalance.result as bigint };
 }

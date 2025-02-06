@@ -3,6 +3,7 @@ import { shareToAmountSyncswap } from "./syncswap";
 import { Address } from "viem";
 import { shareToAmountVenus } from "./venus";
 import { shareToAmountAave } from "./aave";
+import { ClaggMainAddress } from "../constants/ClaggAddresses";
 
 export async function claggShareToAmount(
   shareBalance: bigint,
@@ -26,16 +27,16 @@ export async function claggShareToAmount(
   }
 
   if (pool?.protocol === "Venus") {
-    const { tokenAmount } = await shareToAmountVenus(shares, poolAddress as Address, context);
+    const { tokenAmount } = await shareToAmountVenus(
+      ClaggMainAddress,
+      poolAddress as Address,
+      context
+    );
     return { token0Value: tokenAmount, token1Value: tokenAmount };
   }
 
   if (pool?.protocol === "Aave") {
-    const { balance } = await shareToAmountAave(
-      poolAddress as Address,
-      poolAddress as Address,
-      context
-    );
+    const { balance } = await shareToAmountAave(ClaggMainAddress, poolAddress as Address, context);
     return { token0Value: balance, token1Value: balance };
   }
 

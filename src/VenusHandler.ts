@@ -63,7 +63,7 @@ Venus.Transfer.handlerWithLoader({
         senderAccountBalance == undefined ? 0n : senderAccountBalance.tokenAmount;
 
       const { tokenAmount, poolDetails } = await shareToAmountVenus(
-        previousAmount - event.params.value,
+        event.params.from.toLowerCase() as Address,
         event.srcAddress.toLowerCase() as Address,
         context
       );
@@ -95,7 +95,7 @@ Venus.Transfer.handlerWithLoader({
         senderAccountBalance == undefined ? 0n : senderAccountBalance.tokenAmount;
 
       const { tokenAmount, poolDetails } = await shareToAmountVenus(
-        previousAmount + event.params.value,
+        event.params.to.toLowerCase() as Address,
         event.srcAddress.toLowerCase() as Address,
         context
       );
