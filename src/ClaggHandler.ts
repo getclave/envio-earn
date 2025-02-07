@@ -6,6 +6,7 @@ import { ClaggAdapterABI } from "./abi/ClaggAdapter";
 import { client } from "./viem/Client";
 import { walletCache } from "./utils/WalletCache";
 import { claggShareToAmount } from "./shareToAmount";
+import { poolToAdapter } from "./constants/ClaggAddresses";
 
 /**
  * Handles deposit events for Clagg pools
@@ -152,8 +153,25 @@ export async function getClaggPool(poolAddress: Address): Promise<{
     client: client as Client,
   });
 
+  const adapterAddress = poolToAdapter[poolAddress.toLowerCase() as keyof typeof poolToAdapter];
+
+  if (adapterAddress == undefined) {
+    return {
+      id: poolAddress.toLowerCase(),
+      address: poolAddress.toLowerCase(),
+      totalShares: 0n,
+      totalSupply: 0n,
+    };
+  }
+
   const [poolInfoResponse] = await client.multicall({
-    contracts: [{ ...contract, functionName: "getPoolInfo" }],
+    contracts: [
+      {
+        ...contract,
+        functionName: "getPoolInfo",
+        args: [poolAddress, adapterAddress],
+      },
+    ],
   });
 
   const poolInfo = poolInfoResponse.result;
