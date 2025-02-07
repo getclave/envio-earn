@@ -84,7 +84,6 @@ ClaggMain.Deposit.handlerWithLoader({
 ClaggMain.Withdraw.handlerWithLoader({
   loader: async ({
     event,
-    context,
   }): Promise<{
     claveAddresses: Set<string>;
   }> => {
@@ -165,12 +164,6 @@ export async function getClaggPool(
   totalShares: bigint;
   totalSupply: bigint;
 }> {
-  const contract = getContract({
-    address: ClaggMainAddress,
-    abi: ClaggAdapterABI,
-    client: client as Client,
-  });
-
   const adapterAddress = poolToAdapter[poolAddress.toLowerCase() as keyof typeof poolToAdapter];
 
   if (adapterAddress == undefined) {

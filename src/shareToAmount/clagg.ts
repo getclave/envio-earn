@@ -36,7 +36,8 @@ export async function claggShareToAmount(
       context,
       blockNumber
     );
-    return { token0Value: tokenAmount, token1Value: tokenAmount };
+    const userBalance = (shareBalance / totalShares) * tokenAmount;
+    return { token0Value: userBalance, token1Value: userBalance };
   }
 
   if (pool?.protocol === "Aave") {
@@ -46,7 +47,8 @@ export async function claggShareToAmount(
       context,
       blockNumber
     );
-    return { token0Value: balance, token1Value: balance };
+    const userBalance = (shareBalance / totalShares) * balance;
+    return { token0Value: userBalance, token1Value: userBalance };
   }
 
   return { token0Value: 0n, token1Value: 0n };
