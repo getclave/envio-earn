@@ -36,7 +36,7 @@ export async function claggShareToAmount(
       context,
       blockNumber
     );
-    const userBalance = (shareBalance / totalShares) * tokenAmount;
+    const userBalance = (shareBalance * tokenAmount) / totalShares;
     return { token0Value: userBalance, token1Value: userBalance };
   }
 
@@ -47,7 +47,7 @@ export async function claggShareToAmount(
       context,
       blockNumber
     );
-    const userBalance = (shareBalance / totalShares) * balance;
+    const userBalance = (shareBalance * balance) / totalShares;
     return { token0Value: userBalance, token1Value: userBalance };
   }
 
