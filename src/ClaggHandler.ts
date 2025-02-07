@@ -53,6 +53,7 @@ ClaggMain.Deposit.handlerWithLoader({
       tokenAmount0: userBalance == undefined ? 0n : userBalance.tokenAmount0,
       tokenAmount1: userBalance == undefined ? 0n : userBalance.tokenAmount1,
       poolAddress: event.params.pool.toLowerCase(),
+      poolRegistry_id: pool.id,
     };
 
     const { token0Value, token1Value } = await claggShareToAmount(
@@ -124,6 +125,7 @@ ClaggMain.Withdraw.handlerWithLoader({
       totalDeposits: userBalance == undefined ? 0n : userBalance.totalDeposits,
       totalWithdrawals: userBalance == undefined ? 0n : userBalance.totalWithdrawals,
       poolAddress: event.params.pool.toLowerCase(),
+      poolRegistry_id: pool.id,
       tokenAmount0: userBalance == undefined ? 0n : userBalance.tokenAmount0,
       tokenAmount1: userBalance == undefined ? 0n : userBalance.tokenAmount1,
     };
