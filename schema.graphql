@@ -51,6 +51,7 @@ type PoolRegistry {
   pool: String! @index
   underlyingToken0: String
   underlyingToken1: String
+  claggEarnBalances: [ClaggEarnBalance!]! @derivedFrom(field: "poolAddress")
 }
 
 #! Venus Protocol
@@ -253,12 +254,12 @@ type ClaggEarnBalance @index(fields: ["userAddress", "shareBalance"]) {
   id: ID! # User address + pool address
   userAddress: String! @index
   shareBalance: BigInt! @index
-  totalDeposits: BigInt! # In terms of underlying token
-  totalWithdrawals: BigInt! # In terms of underlying token
+  totalDeposits: BigInt!
+  totalWithdrawals: BigInt!
   tokenAmount0: BigInt! @index
   tokenAmount1: BigInt! @index
   poolAddress: String! @index
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+  poolRegistry: PoolRegistry!
 }
 
 type HistoricalClaggEarnBalance4Hours @index(fields: ["userAddress", "timestamp"]) {
@@ -270,7 +271,7 @@ type HistoricalClaggEarnBalance4Hours @index(fields: ["userAddress", "timestamp"
   tokenAmount0: BigInt! @index
   tokenAmount1: BigInt! @index
   poolAddress: String! @index
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+  poolRegistry: PoolRegistry! # Remove @derivedFrom and make it a direct reference
   timestamp: BigInt! @index
 }
 
@@ -283,7 +284,7 @@ type HistoricalClaggEarnBalance1Day @index(fields: ["userAddress", "timestamp"])
   tokenAmount0: BigInt! @index
   tokenAmount1: BigInt! @index
   poolAddress: String! @index
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+  poolRegistry: PoolRegistry! # Remove @derivedFrom and make it a direct reference
   timestamp: BigInt! @index
 }
 
@@ -296,7 +297,7 @@ type HistoricalClaggEarnBalance7Days @index(fields: ["userAddress", "timestamp"]
   tokenAmount0: BigInt! @index
   tokenAmount1: BigInt! @index
   poolAddress: String! @index
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+  poolRegistry: PoolRegistry! # Remove @derivedFrom and make it a direct reference
   timestamp: BigInt! @index
 }
 
@@ -309,6 +310,6 @@ type HistoricalClaggEarnBalance1Month @index(fields: ["userAddress", "timestamp"
   tokenAmount0: BigInt! @index
   tokenAmount1: BigInt! @index
   poolAddress: String! @index
-  poolRegistry: [PoolRegistry!]! @derivedFrom(field: "pool")
+  poolRegistry: PoolRegistry! # Remove @derivedFrom and make it a direct reference
   timestamp: BigInt! @index
 }
