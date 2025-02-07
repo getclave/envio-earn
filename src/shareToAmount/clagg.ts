@@ -16,7 +16,7 @@ export async function claggShareToAmount(
   if (totalShares === 0n || shareBalance === 0n) {
     return { token0Value: 0n, token1Value: 0n };
   }
-  const shares = totalSupply * (shareBalance / totalShares);
+  const shares = (totalSupply * shareBalance) / totalShares;
   const pool = await context.PoolRegistry.get(poolAddress);
 
   if (pool?.protocol === "Syncswap") {
@@ -24,7 +24,8 @@ export async function claggShareToAmount(
       poolAddress as Address,
       shares,
       blockNumber,
-      context
+      context,
+      ClaggMainAddress
     );
     return { token0Value, token1Value };
   }
