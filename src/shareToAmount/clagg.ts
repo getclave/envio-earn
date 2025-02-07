@@ -13,6 +13,9 @@ export async function claggShareToAmount(
   blockNumber: bigint,
   context: handlerContext
 ) {
+  if (totalShares === 0n || shareBalance === 0n) {
+    return { token0Value: 0n, token1Value: 0n };
+  }
   const shares = totalSupply * (shareBalance / totalShares);
   const pool = await context.PoolRegistry.get(poolAddress);
 
@@ -30,13 +33,19 @@ export async function claggShareToAmount(
     const { tokenAmount } = await shareToAmountVenus(
       ClaggMainAddress,
       poolAddress as Address,
-      context
+      context,
+      blockNumber
     );
     return { token0Value: tokenAmount, token1Value: tokenAmount };
   }
 
   if (pool?.protocol === "Aave") {
-    const { balance } = await shareToAmountAave(ClaggMainAddress, poolAddress as Address, context);
+    const { balance } = await shareToAmountAave(
+      ClaggMainAddress,
+      poolAddress as Address,
+      context,
+      blockNumber
+    );
     return { token0Value: balance, token1Value: balance };
   }
 

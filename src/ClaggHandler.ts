@@ -1,12 +1,19 @@
 import { ClaggEarnBalance, ClaggMain, handlerContext } from "generated";
 import { ClaggEarnBalance_t } from "generated/src/db/Entities.gen";
-import { Address, Client, getContract } from "viem";
+import {
+  Address,
+  Client,
+  createPublicClient,
+  decodeFunctionResult,
+  encodeFunctionData,
+  getContract,
+} from "viem";
 import { roundTimestamp } from "./utils/helpers";
 import { ClaggAdapterABI } from "./abi/ClaggAdapter";
 import { client } from "./viem/Client";
 import { walletCache } from "./utils/WalletCache";
 import { claggShareToAmount } from "./shareToAmount";
-import { poolToAdapter } from "./constants/ClaggAddresses";
+import { ClaggMainAddress, poolToAdapter } from "./constants/ClaggAddresses";
 
 /**
  * Handles deposit events for Clagg pools
@@ -28,7 +35,10 @@ ClaggMain.Deposit.handlerWithLoader({
   },
   handler: async ({ event, context, loaderReturn }) => {
     const { userBalance } = loaderReturn;
-    const pool = await getClaggPool(event.params.pool.toLowerCase() as Address);
+    const pool = await getClaggPool(
+      event.params.pool.toLowerCase() as Address,
+      BigInt(event.block.number)
+    );
     context.Account.set({
       id: event.params.user.toLowerCase(),
       address: event.params.user.toLowerCase(),
@@ -98,7 +108,10 @@ ClaggMain.Withdraw.handlerWithLoader({
       address: event.params.user.toLowerCase(),
     });
 
-    const pool = await getClaggPool(event.params.pool.toLowerCase() as Address);
+    const pool = await getClaggPool(
+      event.params.pool.toLowerCase() as Address,
+      BigInt(event.block.number)
+    );
 
     const userBalance = await context.ClaggEarnBalance.get(
       event.params.user.toLowerCase() + event.params.pool.toLowerCase()
@@ -141,14 +154,17 @@ ClaggMain.Withdraw.handlerWithLoader({
  * Gets or creates a Clagg pool entry in the database
  * Fetches pool details including total shares and supply
  */
-export async function getClaggPool(poolAddress: Address): Promise<{
+export async function getClaggPool(
+  poolAddress: Address,
+  blockNumber: bigint
+): Promise<{
   id: string;
   address: string;
   totalShares: bigint;
   totalSupply: bigint;
 }> {
   const contract = getContract({
-    address: poolAddress,
+    address: ClaggMainAddress,
     abi: ClaggAdapterABI,
     client: client as Client,
   });
@@ -164,17 +180,13 @@ export async function getClaggPool(poolAddress: Address): Promise<{
     };
   }
 
-  const [poolInfoResponse] = await client.multicall({
-    contracts: [
-      {
-        ...contract,
-        functionName: "getPoolInfo",
-        args: [poolAddress, adapterAddress],
-      },
-    ],
-  });
+  const poolInfoResponse = await getPoolConfigCalldata(
+    poolAddress,
+    adapterAddress as Address,
+    blockNumber
+  );
 
-  const poolInfo = poolInfoResponse.result;
+  const poolInfo = poolInfoResponse;
 
   const newClaggPool = {
     id: poolAddress.toLowerCase(),
@@ -211,4 +223,34 @@ function setHistoricalClaggEarnBalance(
     id: accountObject.id + roundTimestamp(timestamp, 86400 * 30),
     timestamp: BigInt(roundTimestamp(timestamp, 86400 * 30)),
   });
+}
+
+type PoolConfig = {
+  totalSupply: bigint;
+  totalLiquidity: bigint;
+};
+
+async function getPoolConfigCalldata(
+  poolAddress: Address,
+  adapterAddress: Address,
+  blockNumber: bigint
+): Promise<PoolConfig> {
+  const singleClient = client as ReturnType<typeof createPublicClient>;
+  const poolConfigCalldata =
+    encodeFunctionData({
+      abi: ClaggAdapterABI,
+      functionName: "getPoolInfo",
+      args: [poolAddress],
+    }) + adapterAddress.slice(2);
+  const poolConfigResponse = await singleClient.call({
+    to: ClaggMainAddress as `0x${string}`,
+    data: poolConfigCalldata as `0x${string}`,
+    blockNumber,
+  });
+  const decodedPoolConfig = decodeFunctionResult({
+    abi: ClaggAdapterABI,
+    functionName: "getPoolInfo",
+    data: poolConfigResponse.data as `0x${string}`,
+  });
+  return decodedPoolConfig as PoolConfig;
 }

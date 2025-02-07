@@ -344,11 +344,6 @@ export const ClaggAdapterABI = [
         name: "pool",
         type: "address",
       },
-      {
-        internalType: "address",
-        name: "adapter",
-        type: "address",
-      },
     ],
     name: "getPoolInfo",
     outputs: [

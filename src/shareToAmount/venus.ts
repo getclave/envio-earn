@@ -10,9 +10,15 @@ import { client } from "../viem/Client";
 export async function shareToAmountVenus(
   userAddress: Address,
   poolAddress: Address,
-  context: handlerContext
+  context: handlerContext,
+  blockNumber: bigint
 ) {
-  const { pool, userBalance } = await getVenusPoolAndUserBalance(userAddress, poolAddress, context);
+  const { pool, userBalance } = await getVenusPoolAndUserBalance(
+    userAddress,
+    poolAddress,
+    context,
+    blockNumber
+  );
   return {
     tokenAmount: userBalance,
     poolDetails: pool,
@@ -29,7 +35,8 @@ export async function shareToAmountVenus(
 async function getVenusPoolAndUserBalance(
   userAddress: Address,
   poolAddress: Address,
-  context: handlerContext
+  context: handlerContext,
+  blockNumber: bigint
 ) {
   const contract = getContract({
     address: poolAddress.toLowerCase() as Address,
@@ -44,6 +51,7 @@ async function getVenusPoolAndUserBalance(
       { ...contract, functionName: "underlying", args: [] },
       { ...contract, functionName: "balanceOfUnderlying", args: [userAddress] },
     ],
+    blockNumber,
   });
 
   const newVenusPool = {

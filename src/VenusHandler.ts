@@ -65,7 +65,8 @@ Venus.Transfer.handlerWithLoader({
       const { tokenAmount, poolDetails } = await shareToAmountVenus(
         event.params.from.toLowerCase() as Address,
         event.srcAddress.toLowerCase() as Address,
-        context
+        context,
+        BigInt(event.block.number)
       );
 
       // Update sender's account balance
@@ -97,7 +98,8 @@ Venus.Transfer.handlerWithLoader({
       const { tokenAmount, poolDetails } = await shareToAmountVenus(
         event.params.to.toLowerCase() as Address,
         event.srcAddress.toLowerCase() as Address,
-        context
+        context,
+        BigInt(event.block.number)
       );
       // Update receiver's account balance
       const prevAccountObject: VenusEarnBalance = {

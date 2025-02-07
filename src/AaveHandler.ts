@@ -48,7 +48,8 @@ Aave.Transfer.handlerWithLoader({
       const { pool, balance } = await shareToAmountAave(
         event.params.from.toLowerCase() as Address,
         event.srcAddress.toLowerCase() as Address,
-        context
+        context,
+        BigInt(event.block.number)
       );
 
       const previousSenderAccountBalance: AaveEarnBalance = {
@@ -74,7 +75,8 @@ Aave.Transfer.handlerWithLoader({
       const { pool, balance } = await shareToAmountAave(
         event.params.to.toLowerCase() as Address,
         event.srcAddress.toLowerCase() as Address,
-        context
+        context,
+        BigInt(event.block.number)
       );
       const previousReceiverAccountBalance: AaveEarnBalance = {
         id: event.params.to.toLowerCase() + pool.id,

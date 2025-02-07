@@ -5,16 +5,23 @@ import { client } from "../viem/Client";
 export async function shareToAmountAave(
   userAddress: Address,
   poolAddress: Address,
-  context: handlerContext
+  context: handlerContext,
+  blockNumber: bigint
 ) {
-  const { pool, balance } = await getPoolAndUserBalance(poolAddress, context, userAddress);
+  const { pool, balance } = await getPoolAndUserBalance(
+    poolAddress,
+    context,
+    userAddress,
+    blockNumber
+  );
   return { balance, pool };
 }
 
 async function getPoolAndUserBalance(
   poolAddress: Address,
   context: handlerContext,
-  userAddress: Address
+  userAddress: Address,
+  blockNumber: bigint
 ) {
   const contract = getContract({
     address: poolAddress.toLowerCase() as Address,
@@ -45,6 +52,7 @@ async function getPoolAndUserBalance(
         args: [userAddress],
       },
     ],
+    blockNumber,
   });
 
   const newAavePool = {
